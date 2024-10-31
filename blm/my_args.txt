@@ -1,0 +1,16 @@
+--save-unknow-datapack
+--pack-error-no-exit
+--print-pack-count
+--no-enter-room
+--no-entry-effect
+--no-send-gift
+--no-combo-send
+--no-live-interactive-game
+--no-stop-live-room-list
+--no-online-rank-count
+--no-online-rank-top3
+--no-online-rank-v2
+--no-guard-buy
+--no-user-toast-msg
+--no-widget-banner
+--no-popularity-red-pocket

@@ -1,0 +1,5 @@
+# 调试参数
+
+--save-unknow-datapack # 保存未知的数据包
+--pack-error-no-exit # 数据包处理出现异常时不退出
+--print-pack-count # 关闭时打印数据包计数

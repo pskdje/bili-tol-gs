@@ -1,0 +1,11 @@
+--no-print-enable
+--no-entry-effect
+--no-watched-change
+--no-stop-live-room-list
+--no-online-rank-count
+--no-online-rank-v2
+--no-notice-msg
+--no-user-toast-msg
+--no-widget-banner
+--no-recommend-card
+--no-goto-buy-flow
