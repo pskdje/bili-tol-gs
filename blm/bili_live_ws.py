@@ -22,9 +22,9 @@ try:
 except ImportError:
     brotli=None
 
-DEBUG=not __debug__
+DEBUG:bool=not __debug__
 TIMEFORMAT="%Y/%m/%d-%H:%M:%S"
-UA="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
+UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
 VERSIONINFO=f"""Python/{sys.version.split()[0]}({sys.platform}) requests/{requests.__version__} websockets/{websockets.__version__}{" brotli/"+brotli.version if brotli else""}"""
 LOGDIRPATH=Path("bili_live_ws_log")
 starttime=time.time()
@@ -35,11 +35,11 @@ wslog=logging.getLogger("websockets.client")
 wslog.setLevel(logging.DEBUG)
 cumulative_error_count=0
 runoptions=None
-sequence=0
+sequence:int=0
 hpst=None
 swd=[]
 brs=[]
-test_pack_count={}
+test_pack_count:dict[str,int]={}
 is_importCmdHandle=False
 cmdHandleList=[]
 other_args=[]
@@ -101,7 +101,7 @@ def error(d=None):# 错误记录
 def pr(d):# 打印并返回输入的值。[用于调试]
     print(d)
     return d
-def bst(b,sep=" "):# 将字节串处理成16进制内容的字符串
+def bst(b:bytes,sep:str=" ")->str:# 将字节串处理成16进制内容的字符串
     t=""
     x=0
     e=len(b)
@@ -111,34 +111,34 @@ def bst(b,sep=" "):# 将字节串处理成16进制内容的字符串
         if x<e: t+=sep
     return t
 
-def idp(*d,**a):# 处于调试模式时打印传入的内容
+def idp(*d,**a)->bool:# 处于调试模式时打印传入的内容
     if not DEBUG:return False
     print(*d,**a)
     return True
 
-def bilipack(t,da):
+def bilipack(t:int,da)->bytes:
     """返回要发送的数据包\nt: 数据包类型\nda: 数据包内容"""
     global sequence
     d=str(da).encode()
     db=b""
-    db+=bytes.fromhex("{:0>8X}".format(16+len(d)))
-    db+=b"\0\x10"b"\0\x01"
-    db+=b"\0\0\0"+bytes.fromhex("0"+str(t))
-    db+=bytes.fromhex("{:0>8X}".format(sequence))
-    db+=d
+    db+=bytes.fromhex("{:0>8X}".format(16+len(d)))# 数据包总长度
+    db+=b"\0\x10"b"\0\x01"# 头部长度 和 协议版本
+    db+=b"\0\0\0"+bytes.fromhex("0"+str(t))# 操作码
+    db+=bytes.fromhex("{:0>8X}".format(sequence))# 每次递增
+    db+=d # 内容
     sequence+=1
     return db
 
-def joinroom(id,k,uid=0):
+def joinroom(c:dict)->bytes:
     """返回加入直播间数据包\n连接后要立即发送
 	id: 直播间id
 	k: 令牌
 	uid: 用户id
 	2023/10/04增: 现在需要登录才能获得用户昵称（这么搞有什么用处？）"""
     protover=3 if brotli else 2
-    return bilipack(7,json.dumps({"roomid":id,"key":k,"uid":uid,"platform":"web","protover":protover},separators=(",",":")))
+    return bilipack(7,json.dumps({"roomid":c["id"],"key":c["k"],"uid":c["uid"],"platform":"web","protover":protover},separators=(",",":")))
 
-def hp():# 返回心跳包
+def hp()->bytes:# 返回心跳包
     return bilipack(2,"")
 
 async def hps(ws):# 每过30秒发送一次心跳包
@@ -156,11 +156,11 @@ async def hps(ws):# 每过30秒发送一次心跳包
     except Exception:
         error()
 
-def fahp(data):# 合并(用于处理人气值)
+def fahp(data:bytes)->int:# 合并(用于处理人气值)
     if not isinstance(data,bytes):raise TypeError("variable 'data' instance not bytes")
     return int.from_bytes(data,"big")
 
-def femsgd(msg):# 分割数据包
+def femsgd(msg:bytes)->list[dict]|None:# 分割数据包
     data=msg.split(b"\0\x10\0\0\0\0\0\x05\0\0\0\0")[1:]
     packlist=[]
     try:
@@ -189,7 +189,7 @@ class SavePack(RuntimeError):
     """用于保存数据包的异常"""
     pass
 
-def savepack(d):# 保存数据包
+def savepack(d:dict):# 保存数据包
     dp=Path("bili_live_ws_pack")
     fn=f"{time.time_ns()}.json"
     fp=dp/fn
@@ -204,14 +204,14 @@ def savepack(d):# 保存数据包
         error(f"保存数据包时出现错误\n路径: {fp.resolve()}\n数据: {d}")
         log.warning("保存失败，详细信息已保存至错误文件。")
 
-def test_pack_add(c):# 对数据包进行计数(理论上能对任何数据进行计数)
+def test_pack_add(c:str):# 对数据包进行计数(理论上能对任何数据进行计数)
     if c not in test_pack_count:
         test_pack_count[c]=1
     else:
         test_pack_count[c]+=1
 
-def pac(pack,o):# 匹配cmd,处理内容
-    cmd=pack["cmd"]
+def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
+    cmd:str=pack["cmd"]
     if cmd in o.save_cmd:
         savepack(pack)
     if cmd in o.count_cmd:
@@ -429,14 +429,14 @@ def pac(pack,o):# 匹配cmd,处理内容
             if DEBUG or o.save_unknow_datapack:
                 savepack(pack)
 
-def pacs(packlist,o):
+def pacs(packlist:list[dict],o:argparse.Namespace):
     # 将数据包列表遍历发送给pac处理
     # 记录出现异常的数据包
     if packlist is None:
         log.warning("未收到数据包列表")
         idp("数据包处理函数pacs未收到数据包列表")
         return
-    this_error_count=0
+    this_error_count:int=0
     for pack in packlist:
         try:
             pac(pack,o)
@@ -457,9 +457,9 @@ def pacs(packlist,o):
             if ie:
                 sys.exit(1)
 
-def print_rq(rq):# 打印人气值
-    hp=fahp(rq)
-    txt=str(hp)
+def print_rq(rq:bytes)->int:# 打印人气值
+    hp:int=fahp(rq)
+    txt:str=str(hp)
     if DEBUG:
         txt+=" ["+bst(rq,",")+"]"
     if hp==1:
@@ -467,18 +467,14 @@ def print_rq(rq):# 打印人气值
     print("[人气]",txt)
     return hp
 
-async def bililivemsg(url,roomid,o,token,uid):
+async def bililivemsg(url,o,jo):
     """使用提供的参数连接直播间"""
     global hpst
     idp("连接服务器…")
-    if o.sessdata and not uid:
-        print("提示: 使用了sessdata但未提供uid")
-    if uid and not o.sessdata:
-        print("警告: 使用了uid但未提供sessdata")
-    log.debug("连接服务器; "f"url: {url} ,roomid: {roomid} ,token: '{token}',uid: {uid}")
+    log.debug("连接服务器; "f"url: {url} ,joinroom: {jo}")
     async with websockets.connect(url,user_agent_header=UA)as ws:
         idp("服务器已连接")
-        jrp=joinroom(roomid,token,uid)
+        jrp=joinroom(jo)
         log.debug(f"认证: {jrp}")
         await ws.send(jrp)
         del jrp
@@ -505,7 +501,7 @@ async def bililivemsg(url,roomid,o,token,uid):
                 print("[支持] 未知的协议版本")
                 idp(msg)
 
-def start(roomid,o):
+def start(roomid:int,o:argparse.Namespace):
     """程序入口
 	roomid: 真实房间号
 	o: 命令行解析后参数组"""
@@ -555,7 +551,7 @@ def start(roomid,o):
         u=d["data"]["host_list"][0]
         ws_host=f"{u['host']}:{u['wss_port']}"
         token=d["data"]["token"]
-        asyncio.run(bililivemsg(f"wss://{ws_host}/sub",roomid,o,token,o.uid))
+        asyncio.run(bililivemsg(f"wss://{ws_host}/sub",o,{"id":roomid,"k":token,"uid":o.uid}))
     except websockets.exceptions.ConnectionClosedError as e:
         log.warning("连接关闭: "+str(e))
         error()
