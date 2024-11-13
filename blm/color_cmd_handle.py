@@ -11,6 +11,14 @@ try:
 except ImportError:
     ls_uid=-65536
 
+try:# 用于windows显示颜色
+    import colorama # 该项目可能缺乏维护
+    colorama.init()
+except ImportError:
+    pass
+except:
+    error("colorama启动失败")
+
 def cbt(n):# 生成颜色操作
     return f"\33[{n}m"
 def cfc(n):# 生成前景颜色
