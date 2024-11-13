@@ -2,3 +2,9 @@
 __pycache__/
 *.bak
 *.log
+.vscode/
+node_modules/
+
+# blm 缓存
+/blm/bili_live_ws_*/
+/blm/bili live msg data/
