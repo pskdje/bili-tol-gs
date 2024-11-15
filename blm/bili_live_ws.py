@@ -3,7 +3,7 @@
 使用的第三方库: requests , websockets
 可选的第三方库: brotli
 数据包参考自: https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md
-数据分析由我自己进行，请注意时效(更新日期:2024/08/06,新增条目)
+数据分析由我自己进行，请注意时效(更新日期:2024/11/15,新增条目)
 已存在的cmd很难确认是否需要更新
 本文件计划只实现基本功能
 本文件自带一个异常保存功能，出现异常时调用error函数即可。
@@ -334,11 +334,14 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             if not o.no_interact_word:# 使用屏蔽交互信息的选项
                 l_like_info_v3_click(pack["data"])
         case "POPULAR_RANK_CHANGED":# 人气排行更新
-            if not o.no_popular_rank_changed:
+            if not o.no_rank_changed:
                 l_popular_rank_changed(pack["data"])
         case "AREA_RANK_CHANGED":# 大航海排行更新
-            if not o.no_area_rank_changed:
+            if not o.no_rank_changed:
                 l_area_rank_changed(pack["data"])
+        case "RANK_CHANGED":
+            if not o.no_rank_changed:
+                l_rank_changed(pack["data"])
         case "DM_INTERACTION":# 交互合并
             if not o.no_dm_interaction:
                 l_dm_interaction(pack["data"])
@@ -380,7 +383,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "GOTO_BUY_FLOW":# 购买推荐(?)
             if not o.no_goto_buy_flow:
                 l_goto_buy_flow(pack["data"])
-        case "LOG_IN_NOTICE":# 登录通知
+        case "LOG_IN_NOTICE":# 登录提示
             l_log_in_notice(pack["data"])
         case "GUARD_HONOR_THOUSAND":# 千舰主播增减
             if not o.no_guard_honor_thousand:
@@ -403,9 +406,13 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "ANCHOR_NORMAL_NOTIFY":# 推荐提示(推测)
             if not o.no_anchor_normal_notify:
                 l_anchor_normal_notify(pack["data"])
-        case "POPULAR_RANK_GUIDE_CARD":
+        case "POPULAR_RANK_GUIDE_CARD":# 冲榜提示卡(推测)(发包情况未知)
             if not o.no_popular_rank_guide_card:
                 l_popular_rank_guide_card(pack["data"])
+        case "ANCHOR_ECOLOGY_LIVING_DIALOG":# 提示框(用于警告?)
+            l_anchor_ecology_living_dialog(pack["data"])
+        case "CUT_OFF_V2":# 切断直播间(v2)
+            l_cut_off_v2(pack["data"])
         case "SYS_MSG":# 系统消息(推测)
             if not o.no_sys_msg:
                 l_sys_msg(pack)
@@ -836,6 +843,8 @@ def l_popular_rank_changed(d):
     print("[排行]","人气榜第",d["rank"],"名")
 def l_area_rank_changed(d):
     print("[排行]",d["rank_name"],"第",d["rank"],"名")
+def l_rank_changed(d):
+    print("[排行]",d["rank_name_by_type"],f"rank_type:{d['rank_type']},rank:{d['rank']}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
 def l_dm_interaction(d):
     p="[交互合并]"
     n=json.loads(d["data"])
@@ -904,6 +913,56 @@ def l_popular_rank_guide_card(d):
     print(h,d["title"])
     print(h,d["sub_text"])
     print(h,d["popup_title"])
+def l_anchor_ecology_living_dialog(d):
+    h="[对话框]"
+    z="[支持]"
+    s=False
+    def sp(i):
+        return str(i["show_platform"])+" "
+    print(h,"标题:",d["dialog_title"])
+    for i in d["dialog_message_list"]:
+        if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
+        else:
+            print(z,"未知对话框内容类型",i["type"])
+            s=True
+    for i in d["dialog_tip_list"]:
+        t=sp(i)
+        for i1 in i["message_list"]:
+            if i1["type"]in[1,2]:t+=i1["content"]
+            else:s=True
+        print(h,"提示:",t)
+    for i in d["dialog_button_list"]:
+        if i["button_action"]==1:
+            print(h,"[按钮:关闭窗口]",i["button_text"])
+        else:s=True
+    if s:raise SavePack("对话框有某个类型未知")
+def l_cut_off_v2(d):
+    z="[支持]"
+    if d["cut_off_version"]!=1:
+        print(z,"不支持的切断直播间数据")
+        raise SavePack("切断直播间")
+    cut=d["cut_off_data"]
+    h="[直播]"
+    s=False
+    def sp(i):
+        return str(i["show_platform"])+" "
+    print(h,"窗口标题:",cut["cut_off_title"])
+    for i in cut["cut_off_message_list"]:
+        if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
+        else:
+            print(z,"未知对话框内容类型",i["type"])
+            s=True
+    for i in cut["cut_off_tip_list"]:
+        t=sp(i)
+        for i1 in i["message_list"]:
+            if i1["type"]in[1,2]:t+=i1["content"]
+            else:s=True
+        print(h,"提示:",t)
+    for i in cut["cut_off_button_list"]:
+        if i["button_action"]==1:
+            print(h,"[按钮:关闭窗口]",i["button_text"])
+        else:s=True
+    if s:raise SavePack("对话框有某个类型未知")
 def l_sys_msg(p):
     print("[系统消息]",p["msg"])
 def l_play_tag(d):
@@ -928,7 +987,7 @@ def get_SESSDATA(s):# 获取登录会话标识
         return None
     return s
 
-def pararg(aarg:list[dict]|tuple[dict,...]=None)->argparse.Namespace:
+def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None)->argparse.Namespace:
     """命令行参数解析"""
     global DEBUG
     global runoptions
@@ -975,8 +1034,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None)->argparse.Namespace:
     cmd.add_argument("--no-super-chat-entrance",help="关醒目留言入口信息",action="store_true")
     cmd.add_argument("--no-popularity-red-pocket",help="关闭红包信息",action="store_true")
     cmd.add_argument("--no-like-info-update",help="关闭点赞计数信息",action="store_true")
-    cmd.add_argument("--no-popular-rank-changed",help="关闭人气排行更新",action="store_true")
-    cmd.add_argument("--no-area-rank-changed",help="关闭大航海排行更新",action="store_true")
+    cmd.add_argument("--no-rank-changed",help="关闭所有全站排行榜更新",action="store_true")
     cmd.add_argument("--no-dm-interaction",help="关闭交互合并信息",action="store_true")
     cmd.add_argument("--no-pk-message",help="关闭全部PK信息",action="store_true")
     cmd.add_argument("--no-pk-battle-process",help="关闭PK过程信息",action="store_true")
@@ -1017,7 +1075,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None)->argparse.Namespace:
             setit("dest")
             log.debug(str(ota.add_argument(arin,**aro)))
             other_args.append(arin)
-    args=parser.parse_args()
+    args=parser.parse_args(args)
     runoptions=args
     log.debug(f"命令行参数: {args}")
     DEBUG=DEBUG or args.debug
