@@ -8,41 +8,42 @@
 本文件计划只实现基本功能
 本文件自带一个异常保存功能，出现异常时调用error函数即可。
 但要注意：它能记录的信息是有限的，并要尽快记录一些信息。因此，你可能需要自行处理一些信息。
-本文件为了压缩文件大小所以部分结构较为混乱，好孩子不要学。
+本文件为了压缩文件大小所以部分结构较为混乱，代码量也很多，好孩子不要学。
 """
 
 import sys,os,time,json,re,zlib
 import errno,logging,traceback
-import requests
-import asyncio,argparse
+import typing,requests
+import asyncio,struct,argparse
 import websockets
 from pathlib import Path
+from typing import Any,NoReturn
 try:
     import brotli
 except ImportError:
     brotli=None
 
 DEBUG:bool=not __debug__
-TIMEFORMAT="%Y/%m/%d-%H:%M:%S"
+TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
 UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
-VERSIONINFO=f"""Python/{sys.version.split()[0]}({sys.platform}) requests/{requests.__version__} websockets/{websockets.__version__}{" brotli/"+brotli.version if brotli else""}"""
+VERSIONINFO:str=f"""Python/{sys.version.split()[0]}({sys.platform}) requests/{requests.__version__} websockets/{websockets.__version__}{" brotli/"+brotli.version if brotli else""}"""
 LOGDIRPATH=Path("bili_live_ws_log")
-starttime=time.time()
+starttime:float=time.time()
 log=logging.getLogger("bili_live_ms")
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 wslog=logging.getLogger("websockets.client")
 wslog.setLevel(logging.DEBUG)
 cumulative_error_count=0
-runoptions=None
+runoptions:argparse.Namespace=None
 sequence:int=0
 hpst=None
-swd=[]
-brs=[]
+swd:list[str]=[]
+brs:list[re.Pattern]=[]
 test_pack_count:dict[str,int]={}
-is_importCmdHandle=False
-cmdHandleList=[]
-other_args=[]
+is_importCmdHandle:bool=False
+cmdHandleList:list[str]=[]
+other_args:list[str]=[]
 
 def error(d=None):# 错误记录
     global cumulative_error_count
@@ -98,7 +99,7 @@ def error(d=None):# 错误记录
         if DEBUG:print("错误信息已存储至",str(fp))
     cumulative_error_count+=1
 
-def pr(d):# 打印并返回输入的值。[用于调试]
+def pr(d:Any):# 打印并返回输入的值。[用于调试]
     print(d)
     return d
 def bst(b:bytes,sep:str=" ")->str:# 将字节串处理成16进制内容的字符串
@@ -116,7 +117,26 @@ def idp(*d,**a)->bool:# 处于调试模式时打印传入的内容
     print(*d,**a)
     return True
 
-def bilipack(t:int,da)->bytes:
+class Proto(typing.NamedTuple):
+    """ws数据包映射"""
+    length:int # 数据包总长度
+    headerLength:int # 头部长度
+    ver:int # 协议版本
+    op:int # 操作码
+    seq:int # 每次递增
+    body:bytes # 正文
+    def __len__(self):
+        return len(self.body)
+    @classmethod
+    def unpack(cls,pk)->typing.Self:
+        """解析服务器下发的数据包"""
+        if not isinstance(pk,bytes):raise TypeError("需要字节串类型数据包")
+        if len(pk)<16:raise ValueError("数据包长度不足")
+        ui=lambda i:struct.unpack(">i",i)[0]
+        uh=lambda i:struct.unpack(">h",i)[0]
+        return cls(ui(pk[0:4]),uh(pk[4:6]),uh(pk[6:8]),ui(pk[8:12]),ui(pk[12:16]),pk[16:])
+
+def bilipack(t:int,da:str)->bytes:
     """返回要发送的数据包\nt: 数据包类型\nda: 数据包内容"""
     global sequence
     d=str(da).encode()
@@ -161,7 +181,7 @@ def fahp(data:bytes)->int:# 合并(用于处理人气值)
     return int.from_bytes(data,"big")
 
 def femsgd(msg:bytes)->list[dict]|None:# 分割数据包
-    data=msg.split(b"\0\x10\0\0\0\0\0\x05\0\0\0\0")[1:]
+    data=msg.split(b"\0\x10\0\0\0\0\0\x05\0\0\0\0")[1:]# 能跑就行
     packlist=[]
     try:
         for item in data:
@@ -176,7 +196,7 @@ def femsgd(msg:bytes)->list[dict]|None:# 分割数据包
         print("无法解析数据")
         return
 
-def save_http_error(r:requests.Response,t:str):
+def save_http_error(r:requests.Response,t:str)->NoReturn:
     """保存HTTP错误"""
     header="header:\n"
     for k,v in r.headers.items():
@@ -189,7 +209,7 @@ class SavePack(RuntimeError):
     """用于保存数据包的异常"""
     pass
 
-def savepack(d:dict):# 保存数据包
+def savepack(d:dict)->NoReturn:# 保存数据包
     dp=Path("bili_live_ws_pack")
     fn=f"{time.time_ns()}.json"
     fp=dp/fn
@@ -204,7 +224,7 @@ def savepack(d:dict):# 保存数据包
         error(f"保存数据包时出现错误\n路径: {fp.resolve()}\n数据: {d}")
         log.warning("保存失败，详细信息已保存至错误文件。")
 
-def test_pack_add(c:str):# 对数据包进行计数(理论上能对任何数据进行计数)
+def test_pack_add(c:str)->NoReturn:# 对数据包进行计数(理论上能对任何数据进行计数)
     if c not in test_pack_count:
         test_pack_count[c]=1
     else:
@@ -436,7 +456,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             if DEBUG or o.save_unknow_datapack:
                 savepack(pack)
 
-def pacs(packlist:list[dict],o:argparse.Namespace):
+def pacs(packlist:list[dict],o:argparse.Namespace)->NoReturn:
     # 将数据包列表遍历发送给pac处理
     # 记录出现异常的数据包
     if packlist is None:
@@ -474,7 +494,7 @@ def print_rq(rq:bytes)->int:# 打印人气值
     print("[人气]",txt)
     return hp
 
-async def bililivemsg(url,o,jo):
+async def bililivemsg(url:str,o:argparse.Namespace,jo:dict)->NoReturn:
     """使用提供的参数连接直播间"""
     global hpst
     idp("连接服务器…")
@@ -487,28 +507,29 @@ async def bililivemsg(url,o,jo):
         del jrp
         hpst=asyncio.create_task(hps(ws),name="重复发送心跳包")
         async for msg in ws:
-            if msg[7]==1 and msg[11]==3:
+            p=Proto.unpack(msg)
+            if p[2]==1 and p[3]==3:
                 rq=print_rq(msg[16:20])
-                log.debug(f"处理后人气值: {rq}, 原始数据: {msg[16:]}")
-            elif msg[7]==1 and msg[11]==8:
-                log.debug(f"认证回复: {msg[16:]}")
-                print("[认证]",msg[16:])
-            elif msg[7]==0:
+                log.debug(f"处理后人气值: {rq}, 原始数据: {p[5]}")
+            elif p[2]==1 and p[3]==8:
+                log.debug(f"认证回复: {p[5]}")
+                print("[认证]",p[5])
+            elif p[3]==5 and (p[2]==0 or p[2]==1):
                 pacs(femsgd(msg),o)
-            elif msg[7]==2:
+            elif p[2]==2:
                 pacs(femsgd(zlib.decompress(msg[16:])),o)
-            elif msg[7]==3:
+            elif p[2]==3:
                 if brotli:
                     pacs(femsgd(brotli.decompress(msg[16:])),o)
                 elif o.no_print_enable:
-                    print("[支持] 未安装brotli，无法处理相关数据，请尝试使用其它协议版本。（正常情况下程序会自动切换协议版本，不过由于设备限制，相关代码未测试）")
+                    print("[支持] 未安装brotli，无法处理相关数据，请尝试使用其它协议版本。")
             else:
-                log.warning(f"未知的协议版本 {msg[7]}")
+                log.warning(f"未知的协议版本 {p[2]}")
                 if o.no_print_enable:continue
-                print("[支持] 未知的协议版本")
+                print("[支持] 未知的协议版本",p[2])
                 idp(msg)
 
-def start(roomid:int,o:argparse.Namespace):
+def start(roomid:int,o:argparse.Namespace)->NoReturn:
     """程序入口
 	roomid: 真实房间号
 	o: 命令行解析后参数组"""
@@ -595,19 +616,19 @@ def start(roomid:int,o:argparse.Namespace):
         log.debug(f"数据包计数: {test_pack_count}")
         raise
 
-def set_logpath():# 日志路径
+def set_logpath()->NoReturn:# 日志路径
     p=LOGDIRPATH
     if not p.is_dir():
         log.info("新建保存日志用目录")
         p.mkdir()
-def set_log():# 保存运行日志
+def set_log()->NoReturn:# 保存运行日志
     import logging.handlers
     set_logpath()
     h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ms.log",maxBytes=2097152,backupCount=3)
     h.setLevel(logging.DEBUG)
     h.setFormatter(logging.Formatter("{asctime} [{levelname}] '{filename}' {funcName}: {message}",style="{"))
     log.addHandler(h)
-def set_wslog():# 保存ws客户端日志
+def set_wslog()->NoReturn:# 保存ws客户端日志
     import logging.handlers
     set_logpath()
     if wslog.hasHandlers():return
@@ -617,7 +638,7 @@ def set_wslog():# 保存ws客户端日志
     wslog.addHandler(h)
     print("已启用ws记录")
 
-def shielding_words(f):
+def shielding_words(f:typing.IO)->NoReturn:
     """屏蔽词"""
     print("解析屏蔽词…")
     try:
@@ -633,7 +654,7 @@ def shielding_words(f):
         f.close()
         log.debug(f"屏蔽词: {swd}")
         idp(swd)
-def blocking_rules(f):
+def blocking_rules(f:typing.IO)->NoReturn:
     """屏蔽规则"""
     print("解析屏蔽规则…")
     try:
@@ -650,16 +671,17 @@ def blocking_rules(f):
         log.debug(f"屏蔽规则: {brs}")
         idp(brs)
 
-def print_test_pack_count():# 打印数据包计数
+def print_test_pack_count()->dict[str,int]:# 打印数据包计数
     cn=test_pack_count
     if len(cn)==0:
         print("无内容")
     for k,v in cn.items():
         print("cmd",k,"计数",v)
+    return cn
 
 class ArgsParser(argparse.ArgumentParser):
     """参数解析，覆盖部分默认行为"""
-    def convert_arg_line_to_args(self,arg_line):
+    def convert_arg_line_to_args(self,arg_line:str):
         """处理一行参数
         注：查源代码可得知，本方法需要参数输入一行文件，返回可迭代对象
         """
@@ -670,7 +692,7 @@ class ArgsParser(argparse.ArgumentParser):
             return lco[0].split()
         return [arg_line]
 
-def import_cmd_handle():
+def import_cmd_handle()->str:
     """导入命令处理"""
     global is_importCmdHandle
     if not runoptions.atirch:return"argument"
@@ -969,7 +991,7 @@ def l_play_tag(d):
     print("[直播]","进度条标签",f"id:{d['tag_id']} 时间戳:{d['timestamp']} 类型: {d['type']}")
 # 命令处理调用处(结束)
 
-def get_SESSDATA(s):# 获取登录会话标识
+def get_SESSDATA(s:str)->str|None:# 获取登录会话标识
     print("警告: 错误记录文件会自动记录命令行参数，其中有SESSDATA数据。")
     p=Path(s)
     if p.is_file():
