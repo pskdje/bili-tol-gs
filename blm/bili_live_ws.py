@@ -18,6 +18,7 @@ import asyncio,struct,argparse
 import websockets
 from pathlib import Path
 from typing import Any,NoReturn
+from collections.abc import Callable
 try:
     import brotli
 except ImportError:
@@ -44,8 +45,9 @@ test_pack_count:dict[str,int]={}
 is_importCmdHandle:bool=False
 cmdHandleList:list[str]=[]
 other_args:list[str]=[]
+create_joinroom_pack_funs:list[Callable[[dict,"NCJR"],str|Any]]=[]
 
-def error(d=None):# 错误记录
+def error(d=None)->NoReturn:# 错误记录
     global cumulative_error_count
     log.exception("[error函数获得了异常]",stack_info=True,stacklevel=2)
     dp=Path("bili_live_ws_err")
@@ -99,7 +101,7 @@ def error(d=None):# 错误记录
         if DEBUG:print("错误信息已存储至",str(fp))
     cumulative_error_count+=1
 
-def pr(d:Any):# 打印并返回输入的值。[用于调试]
+def pr(d:Any)->Any:# 打印并返回输入的值。[用于调试]
     print(d)
     return d
 def bst(b:bytes,sep:str=" ")->str:# 将字节串处理成16进制内容的字符串
@@ -155,6 +157,17 @@ def joinroom(c:dict)->bytes:
 	k: 令牌
 	uid: 用户id
 	2023/10/04增: 现在需要登录才能获得用户昵称（这么搞有什么用处？）"""
+    cj=create_joinroom_pack_funs
+    class NCJR(RuntimeError):
+        """显式声明无法处理该加入直播间数据"""
+    for i in cj:
+        if not callable(i):continue
+        try:
+            cjr=i(c,NCJR)
+        except(NCJR,AssertionError):pass
+        except:error("某个函数无法处理数据")
+        else:
+            if isinstance(cjr,str):return bilipack(7,cjr)
     protover=3 if brotli else 2
     return bilipack(7,json.dumps({"roomid":c["id"],"key":c["k"],"uid":c["uid"],"platform":"web","protover":protover},separators=(",",":")))
 
@@ -232,28 +245,22 @@ def test_pack_add(c:str)->NoReturn:# 对数据包进行计数(理论上能对任
 
 def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
     cmd:str=pack["cmd"]
-    if cmd in o.save_cmd:
-        savepack(pack)
-    if cmd in o.count_cmd:
-        test_pack_add(cmd)
+    if cmd in o.save_cmd: savepack(pack)
+    if cmd in o.count_cmd: test_pack_add(cmd)
     match cmd:
         case "DANMU_MSG":# 弹幕
             l_danmu_msg(pack["info"])
         case "INTERACT_WORD":# 交互
-            if not o.no_interact_word:
-                l_interact_word(pack["data"],o)
+            if not o.no_interact_word:l_interact_word(pack["data"],o)
         case "ENTRY_EFFECT":# 进场
-            if not o.no_entry_effect:
-                l_entry_effect(pack["data"])
+            if not o.no_entry_effect:l_entry_effect(pack["data"])
         case "SEND_GIFT":# 礼物
-            if not o.no_send_gift:
-                l_send_gift(pack["data"])
+            if not o.no_send_gift:l_send_gift(pack["data"])
         case "COMBO_SEND":# 组合礼物(推测)
             if not o.no_combo_send:
                 l_combo_send(pack["data"])
         case "WATCHED_CHANGE":# 看过
-            if not o.no_watched_change:
-                l_watched_change(pack["data"])
+            if not o.no_watched_change:l_watched_change(pack["data"])
         case "SUPER_CHAT_MESSAGE":# 醒目留言
             if not o.no_super_chat_message:
                 l_super_chat_message(pack["data"])
@@ -274,8 +281,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "ROOM_REAL_TIME_MESSAGE_UPDATE":# 数据更新
             l_room_real_time_message_update(pack["data"])
         case "STOP_LIVE_ROOM_LIST":# 停止直播的房间列表(推测)
-            if not o.no_stop_live_room_list:
-                l_stop_live_room_list(pack["data"])
+            if not o.no_stop_live_room_list:l_stop_live_room_list(pack["data"])
         case "ROOM_BLOCK_MSG":# 用户被禁言
             l_room_block_msg(pack)
         case "CUT_OFF":# 警告
@@ -290,8 +296,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             if not o.no_danmu_aggregation:
                 l_danmu_aggregation(pack["data"])
         case "ONLINE_RANK_COUNT":# 在线计数
-            if not o.no_online_rank_count:
-                l_online_rank_count(pack["data"])
+            if not o.no_online_rank_count:l_online_rank_count(pack["data"])
         case "LITTLE_TIPS":# 某种提示，内容可能与使用的会话信息有关
             l_little_tips(pack["data"])
         case "LITTLE_MESSAGE_BOX":# 弹框提示
@@ -451,10 +456,8 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         ): test_pack_add(cmd)
         case _:# 未知命令
             log.debug(f"未支持的cmd: '{cmd}'")
-            if not o.no_print_enable:
-                print(f"[支持] 不支持'{cmd}'命令")
-            if DEBUG or o.save_unknow_datapack:
-                savepack(pack)
+            if not o.no_print_enable:print(f"[支持] 不支持'{cmd}'命令")
+            if DEBUG or o.save_unknow_datapack: savepack(pack)
 
 def pacs(packlist:list[dict],o:argparse.Namespace)->NoReturn:
     # 将数据包列表遍历发送给pac处理
@@ -468,9 +471,8 @@ def pacs(packlist:list[dict],o:argparse.Namespace)->NoReturn:
         try:
             pac(pack,o)
         except SavePack as sp:
-            log.debug(f"期望保存数据包，信息: {sp}")
-            if DEBUG or o.save_unknow_datapack:
-                savepack(pack)
+            log.debug(f"代码期望保存数据包，信息: {sp}")
+            if DEBUG or o.save_unknow_datapack: savepack(pack)
         except:
             error("出现异常的数据包:\n"+json.dumps(pack,ensure_ascii=False,indent="\t"))
             this_error_count+=1
@@ -481,16 +483,13 @@ def pacs(packlist:list[dict],o:argparse.Namespace)->NoReturn:
             if this_error_count>2:
                 ie=True
                 print("单个处理列表错误次数过多，强制进行关闭")
-            if ie:
-                sys.exit(1)
+            if ie:sys.exit(1)
 
 def print_rq(rq:bytes)->int:# 打印人气值
     hp:int=fahp(rq)
     txt:str=str(hp)
-    if DEBUG:
-        txt+=" ["+bst(rq,",")+"]"
-    if hp==1:
-        txt+=" (未开播或不显示)"
+    if DEBUG: txt+=" ["+bst(rq,",")+"]"
+    if hp==1: txt+=" (未开播或不显示)"
     print("[人气]",txt)
     return hp
 
@@ -521,8 +520,7 @@ async def bililivemsg(url:str,o:argparse.Namespace,jo:dict)->NoReturn:
             elif p[2]==3:
                 if brotli:
                     pacs(femsgd(brotli.decompress(msg[16:])),o)
-                elif o.no_print_enable:
-                    print("[支持] 未安装brotli，无法处理相关数据，请尝试使用其它协议版本。")
+                elif o.no_print_enable:print("[支持] 未安装brotli，无法处理相关数据，请尝试使用其它协议版本。")
             else:
                 log.warning(f"未知的协议版本 {p[2]}")
                 if o.no_print_enable:continue
@@ -538,16 +536,11 @@ def start(roomid:int,o:argparse.Namespace)->NoReturn:
     idp("获取直播信息流地址…")
     log.info("获取信息流地址")
     try:
-        r=requests.get(
-            "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id="+str(roomid),
+        r=requests.get("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id="+str(roomid),
             headers={
                 "Origin":"https://live.bilibili.com/",
                 "User-Agent":UA
-            },
-            cookies={
-                "SESSDATA":o.sessdata
-            }
-        )
+            },cookies={"SESSDATA":o.sessdata})
     except KeyboardInterrupt:
         print("获取信息操作被中断")
         log.info("中断键按下，停止获取")
@@ -584,8 +577,7 @@ def start(roomid:int,o:argparse.Namespace)->NoReturn:
         log.warning("连接关闭: "+str(e))
         error()
         print("连接关闭:",e)
-        if (o.sessdata or o.uid) and time.time()-starttime<10:
-            print("检测到使用了登录会话信息，请检查相关参数的正确性和有效性。")
+        if (o.sessdata or o.uid) and time.time()-starttime<10:print("检测到使用了登录会话信息，请检查相关参数的正确性和有效性。")
         sys.exit(1)
     except websockets.exceptions.InvalidMessage as e:
         error()
@@ -733,12 +725,9 @@ def l_interact_word(d,o):
     mt=d["msg_type"]
     nm=d["uname"]
     if mt==1:
-        if not o.no_enter_room:
-            print(info,nm,"进入直播间")
-    elif mt==2:
-        print(info,nm,"关注直播间")
-    elif mt==3:
-        print(info,nm,"分享直播间")
+        if not o.no_enter_room:print(info,nm,"进入直播间")
+    elif mt==2:print(info,nm,"关注直播间")
+    elif mt==3:print(info,nm,"分享直播间")
     else:
         t=f"未知的交互类型: {d['msg_type']}"
         log.debug(t)
@@ -752,10 +741,8 @@ def l_send_gift(d):
 def l_combo_send(d):
     print("[礼物]",d["uname"],d["action"],d["gift_name"],"×",d["total_num"])
 def l_watched_change(d):
-    if DEBUG:
-        print("[观看]",d["num"],"人看过;","text_large:",d["text_large"])
-    else:
-        print("[观看]",d["num"],"人看过")
+    if DEBUG:print("[观看]",d["num"],"人看过;","text_large:",d["text_large"])
+    else:print("[观看]",d["num"],"人看过")
 def l_super_chat_message(d):
     print("[留言]",f"{d['user_info']['uname']}(￥{d['price']}):",d["message"])
 def l_super_chat_message_delete(d):
@@ -799,18 +786,15 @@ def l_little_message_box(d):
 def l_voice_join_list(d):
     print("[连麦]","申请计数:",d["apply_count"])
 def l_online_rank_top3(d):
-    if DEBUG:
-        print("[排行]",f"len({len(d['list'])})",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
-    else:
-        print("[排行]",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
+    if DEBUG:print("[排行]",f"len({len(d['list'])})",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
+    else:print("[排行]",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
 def l_voice_join_status(d):
-    if d["status"]==0:
-        print("[连麦]","停止连麦")
-    elif d["status"]==1:
-        print("[连麦]","正在与",d["user_name"],"连麦")
+    if d["status"]==0:print("[连麦]","停止连麦")
+    elif d["status"]==1:print("[连麦]","正在与",d["user_name"],"连麦")
     else:
-        log.debug(f"未知的语音状态: {d['status']}")
-        raise SavePack("未知的语音连麦状态")
+        t="未知的语音连麦状态"
+        log.debug(f"{t}: {d['status']}")
+        raise SavePack(t)
 def l_online_rank_v2(d,npe):
     pass
 def l_hot_rank_settlement(d):
@@ -818,18 +802,14 @@ def l_hot_rank_settlement(d):
 def l_common_notice_danmaku(d):
     for cse in d["content_segments"]:
         cset=cse["type"]
-        if cset==1:
-            print("[通知]",cse["text"])
-        elif cset==2:
-            print("[通知]","图片:",cse.get("img_url"))
+        if cset==1:print("[通知]",cse["text"])
+        elif cset==2:print("[通知]","图片:",cse.get("img_url"))
         else:
             log.debug(f"未知的通知组件类型: {cset}")
             raise SavePack("通知组件类型")
 def l_notice_msg(d):
-    if "name"in d:
-        print("[公告]",d["name"],"=>",d["msg_self"])
-    else:
-        print("[公告]",d["msg_self"])
+    if "name"in d:print("[公告]",d["name"],"=>",d["msg_self"])
+    else:print("[公告]",d["msg_self"])
 def l_guard_buy(d):
     print("[礼物]",d["username"],"购买了",d["num"],"个",d["gift_name"])
 def l_user_toast_msg(d):
@@ -839,8 +819,7 @@ def l_widget_banner(d):
         if d["widget_list"][wi]is None:continue
         print("[小部件]",f"key:{wi}","id",d["widget_list"][wi]["id"],"标题:",d["widget_list"][wi]["title"])
 def l_super_chat_entrance(d):
-    if d["status"]==0:
-        print("[信息]","关闭醒目留言入口")
+    if d["status"]==0:print("[信息]","关闭醒目留言入口")
     else:
         log.debug(f"status: {d['status']}")
         print("[支持]","未知的'SUPER_CHAT_ENTRANCE'status数字:",d["status"])
@@ -939,8 +918,7 @@ def l_anchor_ecology_living_dialog(d):
     h="[对话框]"
     z="[支持]"
     s=False
-    def sp(i):
-        return str(i["show_platform"])+" "
+    sp=lambda i:str(i["show_platform"])+" "
     print(h,"标题:",d["dialog_title"])
     for i in d["dialog_message_list"]:
         if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
@@ -954,8 +932,7 @@ def l_anchor_ecology_living_dialog(d):
             else:s=True
         print(h,"提示:",t)
     for i in d["dialog_button_list"]:
-        if i["button_action"]==1:
-            print(h,"[按钮:关闭窗口]",i["button_text"])
+        if i["button_action"]==1:print(h,"[按钮:关闭窗口]",i["button_text"])
         else:s=True
     if s:raise SavePack("对话框有某个类型未知")
 def l_cut_off_v2(d):
@@ -966,8 +943,7 @@ def l_cut_off_v2(d):
     cut=d["cut_off_data"]
     h="[直播]"
     s=False
-    def sp(i):
-        return str(i["show_platform"])+" "
+    sp=lambda i:str(i["show_platform"])+" "
     print(h,"窗口标题:",cut["cut_off_title"])
     for i in cut["cut_off_message_list"]:
         if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
@@ -981,8 +957,7 @@ def l_cut_off_v2(d):
             else:s=True
         print(h,"提示:",t)
     for i in cut["cut_off_button_list"]:
-        if i["button_action"]==1:
-            print(h,"[按钮:关闭窗口]",i["button_text"])
+        if i["button_action"]==1:print(h,"[按钮:关闭窗口]",i["button_text"])
         else:s=True
     if s:raise SavePack("对话框有某个类型未知")
 def l_sys_msg(p):
@@ -1013,8 +988,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None)->argparse.Name
     """命令行参数解析"""
     global DEBUG
     global runoptions
-    if runoptions:
-        raise RuntimeError("检测到已进行过一次命令行参数获取")
+    if runoptions:raise RuntimeError("检测到已进行过一次命令行参数获取")
     desc="哔哩哔哩直播信息流处理\n允许使用@来引入参数文件\n默认在文件夹下会附带bili_live_ws.md来提供额外信息"
     epil="关于登录信息的使用可查看md的参数部分。"
     parser=ArgsParser(usage="%(prog)s [options] roomid",description=desc,epilog=epil,formatter_class=argparse.RawDescriptionHelpFormatter,fromfile_prefix_chars="@")
@@ -1114,10 +1088,8 @@ def main():# 启动
     roomid=args.roomid
     print("直播间ID:",roomid)
     log.info("处理屏蔽数据文件")
-    if args.shielding_words:
-        shielding_words(args.shielding_words)
-    if args.blocking_rules:
-        blocking_rules(args.blocking_rules)
+    if args.shielding_words: shielding_words(args.shielding_words)
+    if args.blocking_rules: blocking_rules(args.blocking_rules)
     if args.atirch:
         r_ich=import_cmd_handle()
         idp("导入命令处理的结果:",r_ich)
