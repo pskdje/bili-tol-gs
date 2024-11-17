@@ -29,16 +29,17 @@ TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
 UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
 VERSIONINFO:str=f"""Python/{sys.version.split()[0]}({sys.platform}) requests/{requests.__version__} websockets/{websockets.__version__}{" brotli/"+brotli.version if brotli else""}"""
 LOGDIRPATH=Path("bili_live_ws_log")
+ENCODING:str="utf_8"
 starttime:float=time.time()
 log=logging.getLogger("bili_live_ms")
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 wslog=logging.getLogger("websockets.client")
 wslog.setLevel(logging.DEBUG)
-cumulative_error_count=0
+cumulative_error_count:int=0
 runoptions:argparse.Namespace=None
 sequence:int=0
-hpst=None
+hpst:asyncio.Task=None
 swd:list[str]=[]
 brs:list[re.Pattern]=[]
 test_pack_count:dict[str,int]={}
@@ -61,7 +62,7 @@ def error(d=None)->NoReturn:# 错误记录
         if not dp.is_dir():
             log.info("新建保存错误文件用目录")
             dp.mkdir()
-        with open(fp,"w")as f:
+        with open(fp,"w",encoding=ENCODING)as f:
             f.write("哔哩哔哩直播信息流\n时间: ")
             f.write(time.strftime("%Y/%m/%d-%H:%M:%S%z"))
             f.write("\n是否为执行入口: "+str(__name__=="__main__"))
@@ -231,7 +232,7 @@ def savepack(d:dict)->NoReturn:# 保存数据包
         dp.mkdir()
     log.debug(f"数据包文件名: {fn}")
     try:
-        with open(fp,"w")as f:
+        with open(fp,"w",encoding=ENCODING)as f:
             f.write(json.dumps(d,ensure_ascii=False,indent="\t",sort_keys=False))
     except:
         error(f"保存数据包时出现错误\n路径: {fp.resolve()}\n数据: {d}")
@@ -242,6 +243,10 @@ def test_pack_add(c:str)->NoReturn:# 对数据包进行计数(理论上能对任
         test_pack_count[c]=1
     else:
         test_pack_count[c]+=1
+
+def pct(name:str,*data:Any)->NoReturn:# 统一按照一定规则输出数据
+    if not isinstance(name,str):raise TypeError("name必须为str")
+    print(f"[{name}]",*data)
 
 def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
     cmd:str=pack["cmd"]
@@ -257,21 +262,17 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "SEND_GIFT":# 礼物
             if not o.no_send_gift:l_send_gift(pack["data"])
         case "COMBO_SEND":# 组合礼物(推测)
-            if not o.no_combo_send:
-                l_combo_send(pack["data"])
+            if not o.no_combo_send:l_combo_send(pack["data"])
         case "WATCHED_CHANGE":# 看过
             if not o.no_watched_change:l_watched_change(pack["data"])
         case "SUPER_CHAT_MESSAGE":# 醒目留言
-            if not o.no_super_chat_message:
-                l_super_chat_message(pack["data"])
+            if not o.no_super_chat_message:l_super_chat_message(pack["data"])
         case "SUPER_CHAT_MESSAGE_JPN":# 醒目留言(日本)
             pass
         case "SUPER_CHAT_MESSAGE_DELETE":# 醒目留言删除(推测)
-            if not o.no_super_chat_message:
-                l_super_chat_message_delete(pack)
+            if not o.no_super_chat_message:l_super_chat_message_delete(pack)
         case "LIVE_INTERACTIVE_GAME":# 类似弹幕，未确定
-            if not o.no_live_interactive_game:
-                l_live_interactive_game(pack["data"])
+            if not o.no_live_interactive_game:l_live_interactive_game(pack["data"])
         case "ROOM_CHANGE":# 直播间更新
             l_room_change(pack["data"])
         case "LIVE":# 开始直播
@@ -293,8 +294,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "CHANGE_ROOM_INFO":# 背景更换
             l_change_room_info(pack)
         case "DANMU_AGGREGATION":# 弹幕聚集
-            if not o.no_danmu_aggregation:
-                l_danmu_aggregation(pack["data"])
+            if not o.no_danmu_aggregation:l_danmu_aggregation(pack["data"])
         case "ONLINE_RANK_COUNT":# 在线计数
             if not o.no_online_rank_count:l_online_rank_count(pack["data"])
         case "LITTLE_TIPS":# 某种提示，内容可能与使用的会话信息有关
@@ -302,50 +302,39 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "LITTLE_MESSAGE_BOX":# 弹框提示
             l_little_message_box(pack["data"])
         case "VOICE_JOIN_LIST":# 连麦列表(推测,原始数据已删除，暂时不打算重新确定)
-            if not o.no_voice_join_list:
-                l_voice_join_list(pack["data"])
+            if not o.no_voice_join_list:l_voice_join_list(pack["data"])
         case "VOICE_JOIN_ROOM_COUNT_INFO":# 同上，现在无法确定是否与上面的数据相同
-            if not o.no_voice_join_list:
-                l_voice_join_list(pack["data"])
+            if not o.no_voice_join_list:l_voice_join_list(pack["data"])
         case "ONLINE_RANK_TOP3":# 前三个第一次成为高能用户
-            if not o.no_online_rank_top3:
-                l_online_rank_top3(pack["data"])
+            if not o.no_online_rank_top3:l_online_rank_top3(pack["data"])
         case "VOICE_JOIN_STATUS":# 连麦状态
-            if not o.no_voice_join_status:
-                l_voice_join_status(pack["data"])
+            if not o.no_voice_join_status:l_voice_join_status(pack["data"])
         case "ONLINE_RANK_V2":
-            if not o.no_online_rank_v2:
-                l_online_rank_v2(pack["data"],o.no_print_enable)
+            if not o.no_online_rank_v2:l_online_rank_v2(pack["data"],o.no_print_enable)
         case "HOT_RANK_SETTLEMENT":# 热门通知
-            if not o.no_hot_rank_settlement:
-                l_hot_rank_settlement(pack["data"])
+            if not o.no_hot_rank_settlement:l_hot_rank_settlement(pack["data"])
         case "HOT_RANK_SETTLEMENT_V2":# 同上
             pass
         case "COMMON_NOTICE_DANMAKU":# 普通通知
-            if not o.no_common_notice_danmaku:
-                l_common_notice_danmaku(pack["data"])
+            if not o.no_common_notice_danmaku:l_common_notice_danmaku(pack["data"])
         case "NOTICE_MSG":# 公告(广播)
-            if not o.no_notice_msg:
-                l_notice_msg(pack)
+            if not o.no_notice_msg:l_notice_msg(pack)
         case "GUARD_BUY":# 舰队购买
-            if not o.no_guard_buy:
-                l_guard_buy(pack["data"])
+            if not o.no_guard_buy:l_guard_buy(pack["data"])
         case "USER_TOAST_MSG":# 舰队续费
-            if not o.no_user_toast_msg:
-                l_user_toast_msg(pack["data"])
+            if not o.no_user_toast_msg:l_user_toast_msg(pack["data"])
+        case "USER_TOAST_MSG_V2":# 同上
+            pass
         case "WIDGET_BANNER":# 小部件
-            if not o.no_widget_banner:
-                l_widget_banner(pack["data"])
+            if not o.no_widget_banner:l_widget_banner(pack["data"])
         case "SUPER_CHAT_ENTRANCE":# 醒目留言入口变化
-            if not o.no_super_chat_entrance:
-                l_super_chat_entrance(pack["data"])
+            if not o.no_super_chat_entrance:l_super_chat_entrance(pack["data"])
         case "ROOM_SKIN_MSG":# 直播间皮肤更新
             l_room_skin_msg(pack)
         case "LIVE_MULTI_VIEW_CHANGE":
             l_live_multi_view_change(pack["data"])
         case "POPULARITY_RED_POCKET_NEW":# 新红包(?)
-            if not o.no_popularity_red_pocket:
-                l_popularity_red_pocket_new(pack["data"])
+            if not o.no_popularity_red_pocket:l_popularity_red_pocket_new(pack["data"])
         case "POPULARITY_RED_POCKET_V2_NEW":# 同上，V2
             pass
         case "POPULARITY_RED_POCKET_START":# 增加屏蔽词(才怪)
@@ -353,97 +342,78 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "POPULARITY_RED_POCKET_V2_START":# 同上，V2
             pass
         case "LIKE_INFO_V3_UPDATE":# 点赞数量
-            if not o.no_like_info_update:
-                l_like_info_v3_update(pack["data"])
+            if not o.no_like_info_update:l_like_info_v3_update(pack["data"])
         case "LIKE_INFO_V3_CLICK":# 点赞点击
             if not o.no_interact_word:# 使用屏蔽交互信息的选项
                 l_like_info_v3_click(pack["data"])
         case "POPULAR_RANK_CHANGED":# 人气排行更新
-            if not o.no_rank_changed:
-                l_popular_rank_changed(pack["data"])
+            if not o.no_rank_changed:l_popular_rank_changed(pack["data"])
         case "AREA_RANK_CHANGED":# 大航海排行更新
-            if not o.no_rank_changed:
-                l_area_rank_changed(pack["data"])
-        case "RANK_CHANGED":
-            if not o.no_rank_changed:
-                l_rank_changed(pack["data"])
+            if not o.no_rank_changed:l_area_rank_changed(pack["data"])
+        case "RANK_CHANGED":# 人气榜
+            if not o.no_rank_changed:l_rank_changed(pack["data"])
+        case "REVENUE_RANK_CHANGED":# 收入排行(机翻)
+            if not o.no_rank_changed:l_revenue_rank_changed(pack["data"])
         case "DM_INTERACTION":# 交互合并
-            if not o.no_dm_interaction:
-                l_dm_interaction(pack["data"])
+            if not o.no_dm_interaction:l_dm_interaction(pack["data"])
+        case "PK_BATTLE_PRE":# PK即将开始
+            if not o.no_pk_message:l_pk_battle_pre(pack)
         case "PK_BATTLE_PRE_NEW":# PK即将开始
-            if not o.no_pk_message:
-                l_pk_battle_pre(pack)
+            if not o.no_pk_message:l_pk_battle_pre_new(pack)
+        case "PK_BATTLE_START":# PK开始
+            if not o.no_pk_message:l_pk_battle_start(pack)
         case "PK_BATTLE_START_NEW":# PK开始
-            if not o.no_pk_message:
-                l_pk_battle_start(pack)
+            if not o.no_pk_message:l_pk_battle_start_new(pack)
+        case "PK_BATTLE_PROCESS":# PK过程
+            if not o.no_pk_message or not o.no_pk_battle_process:l_pk_battle_process(pack)
         case "PK_BATTLE_PROCESS_NEW":# PK过程
-            if not o.no_pk_message or not o.no_pk_battle_process:
-                l_pk_battle_process(pack)
+            if not o.no_pk_message or not o.no_pk_battle_process:l_pk_battle_process_new(pack)
         case "PK_BATTLE_FINAL_PROCESS":# PK结束流程变化(推测)
-            if not o.no_pk_message:
-                l_pk_battle_final_process(pack)
+            if not o.no_pk_message:l_pk_battle_final_process(pack)
         case "PK_BATTLE_END":# PK结束
-            if not o.no_pk_message:
-                l_pk_battle_end(pack)
+            if not o.no_pk_message:l_pk_battle_end(pack)
         case "PK_BATTLE_SETTLE":# PK结算1
-            pass
+            if not o.no_pk_message:l_pk_battle_settle(pack)
         case "PK_BATTLE_SETTLE_V2":# PK结算2
-            if not o.no_pk_message:
-                l_pk_battle_settle_v2(pack)
+            if not o.no_pk_message:l_pk_battle_settle_v2(pack)
         case "PK_BATTLE_SETTLE_NEW":# pk结算并进入惩罚
-            if not o.no_pk_message:
-                l_pk_battle_settle_new(pack)
+            if not o.no_pk_message:l_pk_battle_settle_new(pack)
         case "PK_BATTLE_VIDEO_PUNISH_BEGIN":# 同上，数据格式不同
-            if not o.no_pk_message:
-                l_pk_battle_video_punish_begin(pack)
+            if not o.no_pk_message:l_pk_battle_video_punish_begin(pack)
         case "PK_BATTLE_PUNISH_END":# 惩罚结束
-            if not o.no_pk_message:
-                l_pk_battle_punish_end(pack)
+            if not o.no_pk_message:l_pk_battle_punish_end(pack)
         case "PK_BATTLE_VIDEO_PUNISH_END":# 同上，少了data部分
-            if not o.no_pk_message:
-                l_pk_battle_video_punish_end(pack)
+            if not o.no_pk_message:l_pk_battle_video_punish_end(pack)
         case "RECOMMEND_CARD":# 推荐卡片
-            if not o.no_recommend_card:
-                l_recommend_card(pack["data"],o.save_recommend_card)
+            if not o.no_recommend_card:l_recommend_card(pack["data"],o.save_recommend_card)
         case "GOTO_BUY_FLOW":# 购买推荐(?)
-            if not o.no_goto_buy_flow:
-                l_goto_buy_flow(pack["data"])
+            if not o.no_goto_buy_flow:l_goto_buy_flow(pack["data"])
         case "LOG_IN_NOTICE":# 登录提示
             l_log_in_notice(pack["data"])
         case "GUARD_HONOR_THOUSAND":# 千舰主播增减
-            if not o.no_guard_honor_thousand:
-                l_guard_honor_thousand(pack["data"])
+            if not o.no_guard_honor_thousand:l_guard_honor_thousand(pack["data"])
         case "GIFT_STAR_PROCESS":# 礼物星球进度
-            if not o.no_gift_star_process:
-                l_gift_star_process(pack["data"])
+            if not o.no_gift_star_process:l_gift_star_process(pack["data"])
         case "ANCHOR_LOT_CHECKSTATUS":# 天选时刻审核状态(?)
-            if not o.no_anchor_lot:
-                l_anchor_lot_checkstatus(pack["data"])
+            if not o.no_anchor_lot:l_anchor_lot_checkstatus(pack["data"])
         case "ANCHOR_LOT_START":# 天选时刻开始
-            if not o.no_anchor_lot:
-                l_anchor_lot_start(pack["data"])
+            if not o.no_anchor_lot:l_anchor_lot_start(pack["data"])
         case "ANCHOR_LOT_END":# 天选时刻结束
-            if not o.no_anchor_lot:
-                l_anchor_lot_end(pack["data"])
+            if not o.no_anchor_lot:l_anchor_lot_end(pack["data"])
         case "ANCHOR_LOT_AWARD":# 天选时刻开奖
-            if not o.no_anchor_lot:
-                l_anchor_lot_award(pack["data"])
+            if not o.no_anchor_lot:l_anchor_lot_award(pack["data"])
         case "ANCHOR_NORMAL_NOTIFY":# 推荐提示(推测)
-            if not o.no_anchor_normal_notify:
-                l_anchor_normal_notify(pack["data"])
+            if not o.no_anchor_normal_notify:l_anchor_normal_notify(pack["data"])
         case "POPULAR_RANK_GUIDE_CARD":# 冲榜提示卡(推测)(发包情况未知)
-            if not o.no_popular_rank_guide_card:
-                l_popular_rank_guide_card(pack["data"])
+            if not o.no_popular_rank_guide_card:l_popular_rank_guide_card(pack["data"])
         case "ANCHOR_ECOLOGY_LIVING_DIALOG":# 提示框(用于警告?)
             l_anchor_ecology_living_dialog(pack["data"])
         case "CUT_OFF_V2":# 切断直播间(v2)
             l_cut_off_v2(pack["data"])
         case "SYS_MSG":# 系统消息(推测)
-            if not o.no_sys_msg:
-                l_sys_msg(pack)
+            if not o.no_sys_msg:l_sys_msg(pack)
         case "PLAY_TAG":# 直播进度条节点标签
-            if not o.no_play_tag:
-                l_play_tag(pack["data"])
+            if not o.no_play_tag:l_play_tag(pack["data"])
         case(# 不进行支持
             "HOT_ROOM_NOTIFY"|# 未知，内容会在哔哩哔哩直播播放器日志中显示。
             "WIDGET_GIFT_STAR_PROCESS"|# 礼物星球，不想写支持。
@@ -452,11 +422,10 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             "PK_BATTLE_MULTIPLE_RES"|# 没看懂
             "POPULARITY_RED_POCKET_WINNER_LIST"|# 看起来好像是得到红包的列表
             "POPULARITY_RED_POCKET_V2_WINNER_LIST"|# 同上
-            "SEND_GIFT_V2"# 礼物第二版(没搞懂意义何在)
         ): test_pack_add(cmd)
         case _:# 未知命令
             log.debug(f"未支持的cmd: '{cmd}'")
-            if not o.no_print_enable:print(f"[支持] 不支持'{cmd}'命令")
+            if not o.no_print_enable: pct("支持",f"不支持'{cmd}'命令")
             if DEBUG or o.save_unknow_datapack: savepack(pack)
 
 def pacs(packlist:list[dict],o:argparse.Namespace)->NoReturn:
@@ -490,7 +459,7 @@ def print_rq(rq:bytes)->int:# 打印人气值
     txt:str=str(hp)
     if DEBUG: txt+=" ["+bst(rq,",")+"]"
     if hp==1: txt+=" (未开播或不显示)"
-    print("[人气]",txt)
+    pct("人气",txt)
     return hp
 
 async def bililivemsg(url:str,o:argparse.Namespace,jo:dict)->NoReturn:
@@ -512,19 +481,19 @@ async def bililivemsg(url:str,o:argparse.Namespace,jo:dict)->NoReturn:
                 log.debug(f"处理后人气值: {rq}, 原始数据: {p[5]}")
             elif p[2]==1 and p[3]==8:
                 log.debug(f"认证回复: {p[5]}")
-                print("[认证]",p[5])
+                pct("认证",p[5])
             elif p[3]==5 and (p[2]==0 or p[2]==1):
                 pacs(femsgd(msg),o)
             elif p[2]==2:
                 pacs(femsgd(zlib.decompress(msg[16:])),o)
             elif p[2]==3:
-                if brotli:
-                    pacs(femsgd(brotli.decompress(msg[16:])),o)
-                elif o.no_print_enable:print("[支持] 未安装brotli，无法处理相关数据，请尝试使用其它协议版本。")
+                if brotli: pacs(femsgd(brotli.decompress(msg[16:])),o)
+                elif o.no_print_enable: pct("支持","未安装brotli，无法处理相关数据，请尝试使用其它协议版本。")
             else:
-                log.warning(f"未知的协议版本 {p[2]}")
+                upv="未知的协议版本"
+                log.warning(f"{upv} {p[2]}")
                 if o.no_print_enable:continue
-                print("[支持] 未知的协议版本",p[2])
+                pct("支持",upv,p[2])
                 idp(msg)
 
 def start(roomid:int,o:argparse.Namespace)->NoReturn:
@@ -610,13 +579,13 @@ def start(roomid:int,o:argparse.Namespace)->NoReturn:
 
 def set_logpath()->NoReturn:# 日志路径
     p=LOGDIRPATH
-    if not p.is_dir():
-        log.info("新建保存日志用目录")
-        p.mkdir()
+    if p.is_dir():return
+    log.info("新建保存日志用目录")
+    p.mkdir()
 def set_log()->NoReturn:# 保存运行日志
     import logging.handlers
     set_logpath()
-    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ms.log",maxBytes=2097152,backupCount=3)
+    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ms.log",maxBytes=2097152,backupCount=3,encoding=ENCODING)
     h.setLevel(logging.DEBUG)
     h.setFormatter(logging.Formatter("{asctime} [{levelname}] '{filename}' {funcName}: {message}",style="{"))
     log.addHandler(h)
@@ -624,7 +593,7 @@ def set_wslog()->NoReturn:# 保存ws客户端日志
     import logging.handlers
     set_logpath()
     if wslog.hasHandlers():return
-    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ws.log",maxBytes=2097152,backupCount=3)
+    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ws.log",maxBytes=2097152,backupCount=3,encoding=ENCODING)
     h.setLevel(logging.DEBUG)
     h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
     wslog.addHandler(h)
@@ -719,78 +688,78 @@ def l_danmu_msg(d):
     if d[1]in swd:return
     for b in brs:
         if b.search(d[1]):return
-    print("[弹幕]",f"{d[2][1]}:",d[1])
+    pct("弹幕",f"{d[2][1]}:",d[1])
 def l_interact_word(d,o):
-    info="[交互]"
+    info="交互"
     mt=d["msg_type"]
     nm=d["uname"]
     if mt==1:
-        if not o.no_enter_room:print(info,nm,"进入直播间")
-    elif mt==2:print(info,nm,"关注直播间")
-    elif mt==3:print(info,nm,"分享直播间")
+        if not o.no_enter_room: pct(info,nm,"进入直播间")
+    elif mt==2: pct(info,nm,"关注直播间")
+    elif mt==3: pct(info,nm,"分享直播间")
     else:
         t=f"未知的交互类型: {d['msg_type']}"
         log.debug(t)
         if not o.no_print_enable:
-            print("[支持]",t)
+            pct("支持",t)
         raise SavePack("未知的交换类型")
 def l_entry_effect(d):
-    print("[进场]",d["copy_writing"])
+    pct("进场",d["copy_writing"])
 def l_send_gift(d):
-    print("[礼物]",d["uname"],d["action"],d["giftName"],"×",d["num"])
+    pct("礼物",d["uname"],d["action"],d["giftName"],"×",d["num"])
 def l_combo_send(d):
-    print("[礼物]",d["uname"],d["action"],d["gift_name"],"×",d["total_num"])
+    pct("礼物",d["uname"],d["action"],d["gift_name"],"×",d["total_num"])
 def l_watched_change(d):
-    if DEBUG:print("[观看]",d["num"],"人看过;","text_large:",d["text_large"])
-    else:print("[观看]",d["num"],"人看过")
+    if DEBUG: pct("观看",d["num"],"人看过;","text_large:",d["text_large"])
+    else: pct("观看",d["num"],"人看过")
 def l_super_chat_message(d):
-    print("[留言]",f"{d['user_info']['uname']}(￥{d['price']}):",d["message"])
+    pct("留言",f"{d['user_info']['uname']}(￥{d['price']}):",d["message"])
 def l_super_chat_message_delete(d):
-    print("[留言]","醒目留言删除:",d["data"]["ids"])
+    pct("留言","醒目留言删除:",d["data"]["ids"])
 def l_live_interactive_game(d):
     if d["msg"]in swd:return
     for b in brs:
         if b.search(d["msg"]):return
-    print("[弹幕](LIG)",f"{d['uname']}:",d["msg"])
+    pct("弹幕(LIG)",f"{d['uname']}:",d["msg"])
 def l_room_change(d):
-    print("[直播]","分区:",d["parent_area_name"],">",d["area_name"],",标题:",d["title"])
+    pct("直播","分区:",d["parent_area_name"],">",d["area_name"],",标题:",d["title"])
 def l_live(p):
-    print("[直播]","直播间",p["roomid"],"开始直播")
+    pct("直播","直播间",p["roomid"],"开始直播")
 def l_preparing(p):
-    print("[直播]","直播间",p["roomid"],"结束直播")
+    pct("直播","直播间",p["roomid"],"结束直播")
 def l_room_real_time_message_update(d):
-    print("[信息]",d["roomid"],"直播间",d["fans"],"粉丝")
+    pct("信息",d["roomid"],"直播间",d["fans"],"粉丝")
 def l_stop_live_room_list(d):
     pass
 def l_room_block_msg(p):
-    print("[直播]","用户",p["uname"],"已被禁言")
+    pct("直播","用户",p["uname"],"已被禁言")
 def l_cut_off(p):
-    print("[直播]","直播间",p["room_id"],"被警告:",p["msg"])
+    pct("直播","直播间",p["room_id"],"被警告:",p["msg"])
 def l_room_lock(p):
-    print("[直播]","直播间",p["roomid"],"被封禁，解除时间:",p["expire"])
+    pct("直播","直播间",p["roomid"],"被封禁，解除时间:",p["expire"])
 def l_room_admins(p):
-    print("[直播]",f"房管列表: len({len(p['uids'])})")
+    pct("直播",f"房管列表: len({len(p['uids'])})")
 def l_change_room_info(p):
-    print("[直播]","直播间",p["roomid"],"信息变更","背景图:",p["background"])
+    pct("直播","直播间",p["roomid"],"信息变更","背景图:",p["background"])
 def l_online_rank_count(d):
     olc=""
     if "online_count"in d:
         olc="在线计数: "+str(d["online_count"])
-    print("[计数]","高能用户计数:",d["count"],olc)
+    pct("计数","高能用户计数:",d["count"],olc)
 def l_danmu_aggregation(d):
     pass
 def l_little_tips(d):
-    print("[提示]",d["msg"])
+    pct("提示",d["msg"])
 def l_little_message_box(d):
-    print("[弹框]",d["msg"])
+    pct("弹框",d["msg"])
 def l_voice_join_list(d):
-    print("[连麦]","申请计数:",d["apply_count"])
+    pct("连麦","申请计数:",d["apply_count"])
 def l_online_rank_top3(d):
-    if DEBUG:print("[排行]",f"len({len(d['list'])})",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
-    else:print("[排行]",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
+    if DEBUG: pct("排行",f"len({len(d['list'])})",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
+    else: pct("排行",d["list"][0]["msg"],f"rank:{d['list'][0]['rank']}")
 def l_voice_join_status(d):
-    if d["status"]==0:print("[连麦]","停止连麦")
-    elif d["status"]==1:print("[连麦]","正在与",d["user_name"],"连麦")
+    if d["status"]==0: pct("连麦","停止连麦")
+    elif d["status"]==1: pct("连麦","正在与",d["user_name"],"连麦")
     else:
         t="未知的语音连麦状态"
         log.debug(f"{t}: {d['status']}")
@@ -798,172 +767,181 @@ def l_voice_join_status(d):
 def l_online_rank_v2(d,npe):
     pass
 def l_hot_rank_settlement(d):
-    print("[排行]",d["dm_msg"])
+    pct("排行",d["dm_msg"])
 def l_common_notice_danmaku(d):
     for cse in d["content_segments"]:
         cset=cse["type"]
-        if cset==1:print("[通知]",cse["text"])
-        elif cset==2:print("[通知]","图片:",cse.get("img_url"))
+        if cset==1: pct("通知",cse["text"])
+        elif cset==2: pct("通知","图片:",cse.get("img_url"))
         else:
             log.debug(f"未知的通知组件类型: {cset}")
             raise SavePack("通知组件类型")
 def l_notice_msg(d):
-    if "name"in d:print("[公告]",d["name"],"=>",d["msg_self"])
-    else:print("[公告]",d["msg_self"])
+    if "name"in d: pct("公告",d["name"],"=>",d["msg_self"])
+    else: pct("公告",d["msg_self"])
 def l_guard_buy(d):
-    print("[礼物]",d["username"],"购买了",d["num"],"个",d["gift_name"])
+    pct("礼物",d["username"],"购买了",d["num"],"个",d["gift_name"])
 def l_user_toast_msg(d):
-    print("[提示]",d["toast_msg"])
+    pct("提示",d["toast_msg"])
 def l_widget_banner(d):
     for wi in d["widget_list"]:
         if d["widget_list"][wi]is None:continue
-        print("[小部件]",f"key:{wi}","id",d["widget_list"][wi]["id"],"标题:",d["widget_list"][wi]["title"])
+        pct("小部件",f"key:{wi}","id",d["widget_list"][wi]["id"],"标题:",d["widget_list"][wi]["title"])
 def l_super_chat_entrance(d):
-    if d["status"]==0:print("[信息]","关闭醒目留言入口")
+    if d["status"]==0: pct("信息","关闭醒目留言入口")
     else:
         log.debug(f"status: {d['status']}")
-        print("[支持]","未知的'SUPER_CHAT_ENTRANCE'status数字:",d["status"])
-        print("因为样本稀少，暂不提供屏蔽该不支持信息")
+        pct("支持","未知的'SUPER_CHAT_ENTRANCE'status数字:",d["status"])
         raise SavePack("未知的status")
 def l_room_skin_msg(d):
-    print("[信息]","直播间皮肤更新","id:",d["skin_id"],",status:",d["status"],",结束时间:",time.strftime(TIMEFORMAT,time.gmtime(d["end_time"])),",当前时间:",time.strftime(TIMEFORMAT,time.gmtime(d["current_time"])))
+    pct("信息","直播间皮肤更新","id:",d["skin_id"],",status:",d["status"],",结束时间:",time.strftime(TIMEFORMAT,time.gmtime(d["end_time"])),",当前时间:",time.strftime(TIMEFORMAT,time.gmtime(d["current_time"])))
 def l_live_multi_view_change(d):
-    print("[信息]","LIVE_MULTI_VIEW_CHANGE",d)
+    pct("信息","LIVE_MULTI_VIEW_CHANGE",d)
     raise SavePack("未知数据包")
 def l_popularity_red_pocket_new(d):
-    print("[通知]",d["uname"],d["action"],"价值",d["price"],"电池的",d["gift_name"])
+    pct("通知",d["uname"],d["action"],"价值",d["price"],"电池的",d["gift_name"])
 def l_popularity_red_pocket_start(d):
     if d["danmu"]not in swd:
         swd.append(d["danmu"])
-        print("[屏蔽]","屏蔽词增加:",d["danmu"])
+        pct("屏蔽","屏蔽词增加:",d["danmu"])
 def l_like_info_v3_update(d):
-    print("[计数]","点赞点击数量:",d["click_count"])
+    pct("计数","点赞点击数量:",d["click_count"])
 def l_like_info_v3_click(d):
-    print("[交互]",d["uname"],d["like_text"])
+    pct("交互",d["uname"],d["like_text"])
 def l_popular_rank_changed(d):
-    print("[排行]","人气榜第",d["rank"],"名")
+    pct("排行","人气榜第",d["rank"],"名")
 def l_area_rank_changed(d):
-    print("[排行]",d["rank_name"],"第",d["rank"],"名")
+    pct("排行",d["rank_name"],"第",d["rank"],"名")
 def l_rank_changed(d):
-    print("[排行]",d["rank_name_by_type"],f"rank_type:{d['rank_type']},rank:{d['rank']}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+    pct("排行",d["rank_name_by_type"],f"rank_type:{d['rank_type']},rank:{d['rank']}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+def l_revenue_rank_changed(d):
+    pct("排行",d["rank_name"],"第",d["rank"],"名")
 def l_dm_interaction(d):
-    p="[交互合并]"
+    p="交互合并"
     n=json.loads(d["data"])
     t=d["type"]
     if t==102:
         for c in n["combo"]:
-            print(p,c["guide"],c["content"],"×"+str(c["cnt"]))
+            pct(p,c["guide"],c["content"],"×"+str(c["cnt"]))
     elif t==104:
-        print(p,n["cnt"],n["suffix_text"],"gift_id:",n["gift_id"])
+        pct(p,n["cnt"],n["suffix_text"],"gift_id:",n["gift_id"])
     elif t==103 or t==105 or t==106:
-        print(p,n["cnt"],n["suffix_text"])
+        pct(p,n["cnt"],n["suffix_text"])
     else:
         log.debug(f"未知的交互合并类型: {t}")
         raise SavePack("交互合并类型")
 def l_pk_battle_pre(d):
-    print("[PK]","PK即将开始",f"id:{d['pk_id']}",f"s:{d['pk_status']}","对方直播间",d["data"]["room_id"],"昵称:",d["data"]["uname"])
+    pass
+def l_pk_battle_pre_new(d):
+    pct("PK","PK即将开始",f"id:{d['pk_id']}",f"s:{d['pk_status']}","对方直播间",d["data"]["room_id"],"昵称:",d["data"]["uname"])
 def l_pk_battle_start(d):
+    pass
+def l_pk_battle_start_new(d):
     a=d["data"]
-    print("[PK]","PK开始",f"id:{d['pk_id']}",f"s:{d['pk_status']}","计数名称:",a["pk_votes_name"],f"增量:{a['pk_votes_add']}")
+    pct("PK","PK开始",f"id:{d['pk_id']}",f"s:{d['pk_status']}","计数名称:",a["pk_votes_name"],f"增量:{a['pk_votes_add']}")
 def l_pk_battle_process(d):
+    pass
+def l_pk_battle_process_new(d):
     a=d["data"]
     i=a["init_info"]
     m=a["match_info"]
-    print("[PK]","计数更新",f"id:{d['pk_id']}",f"s:{d['pk_status']}","直播间",i["room_id"],"已有",i["votes"],"票，直播间",m["room_id"],"已有",m["votes"],"票")
+    pct("PK","计数更新",f"id:{d['pk_id']}",f"s:{d['pk_status']}","直播间",i["room_id"],"已有",i["votes"],"票，直播间",m["room_id"],"已有",m["votes"],"票")
 def l_pk_battle_final_process(d):
-    print("[PK]","PK结束流程变化",f"id:{d['pk_id']}",f"s:{d['pk_status']}")
+    pct("PK","PK结束流程变化",f"id:{d['pk_id']}",f"s:{d['pk_status']}")
 def l_pk_battle_end(d):
     a=d["data"]
     i=a["init_info"]
     m=a["match_info"]
-    print("[PK]","PK结束",f"id:{d['pk_id']}",f"s:{d['pk_status']}","直播间",i["room_id"],"获得",i["votes"],"票，直播间",m["room_id"],"获得",m["votes"],"票")
+    pct("PK","PK结束",f"id:{d['pk_id']}",f"s:{d['pk_status']}","直播间",i["room_id"],"获得",i["votes"],"票，直播间",m["room_id"],"获得",m["votes"],"票")
+def l_pk_battle_settle(d):
+    pass
 def l_pk_battle_settle_v2(d):
     a=d["data"]
-    print("[PK]","PK结算",f"id:{d['pk_id']}",f"s:{d['pk_status']}","主播获得",a["result_info"]["pk_votes"],a["result_info"]["pk_votes_name"])
+    pct("PK","PK结算",f"id:{d['pk_id']}",f"s:{d['pk_status']}","主播获得",a["result_info"]["pk_votes"],a["result_info"]["pk_votes_name"])
 def l_pk_battle_settle_new(p):
-    print("[PK]","进入惩罚时间",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    pct("PK","进入惩罚时间",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
 def l_pk_battle_video_punish_begin(p):
-    print("[PK]","进入惩罚时间",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    pct("PK","进入惩罚时间",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
 def l_pk_battle_punish_end(p):
-    print("[PK]","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
 def l_pk_battle_video_punish_end(p):
-    print("[PK]","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
 def l_recommend_card(d,s):
-    print("[广告]","推荐卡片","推荐数量:",len(d["recommend_list"]),"更新数量:",len(d["update_list"]))
+    pct("广告","推荐卡片","推荐数量:",len(d["recommend_list"]),"更新数量:",len(d["update_list"]))
     if s:raise SavePack("保存推荐卡片")
 def l_goto_buy_flow(d):
-    print("[广告]",d["text"])
+    pct("广告",d["text"])
 def l_log_in_notice(d):
-    print("[需要登录]",d["notice_msg"])
+    pct("需要登录",d["notice_msg"])
 def l_guard_honor_thousand(d):
     pass
 def l_gift_star_process(d):
-    print("[提示]","礼物星球",f"status:{d['status']}",d["tip"])
+    pct("提示","礼物星球",f"status:{d['status']}",d["tip"])
 def l_anchor_lot_checkstatus(d):
-    print("[天选时刻]","状态更新",f"id:{d['id']},status:{d['status']},uid:{d['uid']}")
+    pct("天选时刻","状态更新",f"id:{d['id']},status:{d['status']},uid:{d['uid']}")
 def l_anchor_lot_start(d):
-    print("[天选时刻]",d["award_name"],f"{d['award_num']}人",f'''发送"{d['danmu']}"参与,需要"{d['require_text']}"''',f"id:{d['id']}",f"最大时间{d['max_time']}秒,剩余{d['time']}秒")
+    pct("天选时刻",d["award_name"],f"{d['award_num']}人",f'''发送"{d['danmu']}"参与,需要"{d['require_text']}"''',f"id:{d['id']}",f"最大时间{d['max_time']}秒,剩余{d['time']}秒")
 def l_anchor_lot_end(d):
-    print("[天选时刻]","id为",d["id"],"的天选时刻已结束")
+    pct("天选时刻","id为",d["id"],"的天选时刻已结束")
 def l_anchor_lot_award(d):
-    print("[天选时刻]",d["award_name"],f"{d['award_num']}人","已开奖",f"id:{d['id']}",f"中奖用户数量{len(d['award_users'])}")
+    pct("天选时刻",d["award_name"],f"{d['award_num']}人","已开奖",f"id:{d['id']}",f"中奖用户数量{len(d['award_users'])}")
 def l_anchor_normal_notify(d):
-    print("[通知]","推荐",f"type:{d['type']},show_type:{d['show_type']}",d["info"]["content"])
+    pct("通知","推荐",f"type:{d['type']},show_type:{d['show_type']}",d["info"]["content"])
 def l_popular_rank_guide_card(d):
-    h="[提示]"
-    print(h,d["title"])
-    print(h,d["sub_text"])
-    print(h,d["popup_title"])
+    h="提示"
+    pct(h,d["title"])
+    pct(h,d["sub_text"])
+    pct(h,d["popup_title"])
 def l_anchor_ecology_living_dialog(d):
-    h="[对话框]"
-    z="[支持]"
+    h="对话框"
+    z="支持"
     s=False
     sp=lambda i:str(i["show_platform"])+" "
-    print(h,"标题:",d["dialog_title"])
+    pct(h,"标题:",d["dialog_title"])
     for i in d["dialog_message_list"]:
         if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
         else:
-            print(z,"未知对话框内容类型",i["type"])
+            pct(z,"未知对话框内容类型",i["type"])
             s=True
     for i in d["dialog_tip_list"]:
         t=sp(i)
         for i1 in i["message_list"]:
             if i1["type"]in[1,2]:t+=i1["content"]
             else:s=True
-        print(h,"提示:",t)
+        pct(h,"提示:",t)
     for i in d["dialog_button_list"]:
-        if i["button_action"]==1:print(h,"[按钮:关闭窗口]",i["button_text"])
+        if i["button_action"]==1: pct(h,"[按钮:关闭窗口]",i["button_text"])
         else:s=True
     if s:raise SavePack("对话框有某个类型未知")
 def l_cut_off_v2(d):
-    z="[支持]"
+    z="支持"
     if d["cut_off_version"]!=1:
-        print(z,"不支持的切断直播间数据")
+        pct(z,"不支持的切断直播间数据")
         raise SavePack("切断直播间")
     cut=d["cut_off_data"]
-    h="[直播]"
+    h="直播"
     s=False
     sp=lambda i:str(i["show_platform"])+" "
-    print(h,"窗口标题:",cut["cut_off_title"])
+    pct(h,"窗口标题:",cut["cut_off_title"])
     for i in cut["cut_off_message_list"]:
         if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
         else:
-            print(z,"未知对话框内容类型",i["type"])
+            pct(z,"未知对话框内容类型",i["type"])
             s=True
     for i in cut["cut_off_tip_list"]:
         t=sp(i)
         for i1 in i["message_list"]:
             if i1["type"]in[1,2]:t+=i1["content"]
             else:s=True
-        print(h,"提示:",t)
+        pct(h,"提示:",t)
     for i in cut["cut_off_button_list"]:
-        if i["button_action"]==1:print(h,"[按钮:关闭窗口]",i["button_text"])
+        if i["button_action"]==1: pct(h,"[按钮:关闭窗口]",i["button_text"])
         else:s=True
     if s:raise SavePack("对话框有某个类型未知")
 def l_sys_msg(p):
-    print("[系统消息]",p["msg"])
+    pct("系统消息",p["msg"])
 def l_play_tag(d):
-    print("[直播]","进度条标签",f"id:{d['tag_id']} 时间戳:{d['timestamp']} 类型: {d['type']}")
+    pct("直播","进度条标签",f"id:{d['tag_id']} 时间戳:{d['timestamp']} 类型: {d['type']}")
 # 命令处理调用处(结束)
 
 def get_SESSDATA(s:str)->str|None:# 获取登录会话标识
