@@ -5,7 +5,7 @@
 
 import re,json,time,asyncio
 from typing import Any
-from __main__ import DEBUG,TIMEFORMAT,log,swd,brs,SavePack,error
+from __main__ import DEBUG,TIMEFORMAT,log,error,swd,brs,SavePack,runoptions
 try:
     from __main__ import ls_uid
 except ImportError:
@@ -92,8 +92,19 @@ clr_dm_inter_task=None
 def cuse(m:str):# 渲染用户颜色
     return RGPL.sub(TUSR+"\\1"+CD,m)
 
-def p(n:str,*d:Any,**t:"print参数")->None:
-    print(f"{TRTG}{DB}[{n}]{DF}",*d,DF,**t)
+def p(n:str,*d:Any,b="",**t:"print参数")->None:
+    if not isinstance(n,str):raise TypeError("名称必须为str")
+    o=runoptions
+    if isinstance(o.add_time,str):
+        at=o.add_time
+        if at=="datetime": f=time.strftime(TIMEFORMAT)
+        elif at=="time": f=time.strftime("%H:%M:%S")
+        elif at=="timestamp": f=str(int(time.time()))
+        else: f=""
+        if f:
+            print(f"{b}{C_16}{f}{CD} {TRTG}{DB}[{n}]{DF}{b}",*d,DF,**t)
+            return
+    print(f"{b}{TRTG}{DB}[{n}]{DF}{b}",*d,DF,**t)
 
 def l_danmu_msg(d):# 弹幕
     if d[1]in swd:
@@ -147,11 +158,11 @@ def l_live_interactive_game(d):# 某种相同弹幕
             return
     p("弹幕(LIG)",f"{TUSR}{d['uname']}{CD}:{C_10}",d["msg"])
 def l_room_change(d):# 直播间更新
-    print(f"{B_05}{TRTG}[直播]{CD} 分区:{C_06} {d['parent_area_name']} {C_02}>{C_06} {d['area_name']} {CD}标题: {C_06}{d['title']}{DF}")
+    p("直播",f"分区:{C_06} {d['parent_area_name']} {C_02}>{C_06} {d['area_name']} {CD}标题: {C_06}{d['title']}{DF}",b=B_05)
 def l_live(b):# 开始直播
-    print(f"{B_05}{TRTG}[直播]{CD} 直播间 {TRMI}{b['roomid']}{CD} 开始直播{DF}")
+    p("直播",f"直播间 {TRMI}{b['roomid']}{CD} 开始直播{DF}",b=B_05)
 def l_preparing(b):# 结束直播
-    print(f"{B_05}{TRTG}[直播]{CD} 直播间 {TRMI}{b['roomid']}{CD} 结束直播{DF}")
+    p("直播",f"直播间 {TRMI}{b['roomid']}{CD} 结束直播{DF}",b=B_05)
 def l_room_real_time_message_update(d):# 数据更新
     p("信息",f"{TRMI}{d['roomid']}{CD} 直播间 {TNUM}{d['fans']}{CD} 粉丝")
 def l_stop_live_room_list(d):# 停止直播的房间列表
@@ -260,6 +271,10 @@ def l_popular_rank_changed(d):# 人气排行更新
     p("排行","人气榜第"+TNUM,d["rank"],CD+"名")
 def l_area_rank_changed(d):# 大航海排行更新
     p("排行",d["rank_name"],"第"+TNUM,d["rank"],CD+"名")
+def l_rank_changed(d):# 人气榜
+    p("排行",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")
+def l_revenue_rank_changed(d):# 收入排行
+    p("排行",d["rank_name"],"第"+TNUM,d["rank"],CD+"名")
 async def clr_dm_inter():# 清理长时间无变化的信息
     d=dm_inter_list
     try:
@@ -320,12 +335,12 @@ def l_dm_interaction(d):# 交互合并
         raise SavePack("交互合并类型")
 def pk_id_status(d:dict)->str:# 处理pk的id和status
     return f"{TKEY}id:{TSTR}{d['pk_id']}{CD} {TKEY}s:{TNUM}{d['pk_status']}{CD}"
-def l_pk_battle_pre(d):# PK即将开始
+def l_pk_battle_pre_new(d):# PK即将开始
     p("PK","PK即将开始",pk_id_status(d),f"对方直播间 {TRMI}{d['data']['room_id']}{CD}","昵称:"+TUSR,d["data"]["uname"])
-def l_pk_battle_start(d):# PK开始
+def l_pk_battle_start_new(d):# PK开始
     a=d["data"]
     p("PK","PK开始",pk_id_status(d),"计数名称:",a["pk_votes_name"],f"增量:{a['pk_votes_add']}")
-def l_pk_battle_process(d):# PK过程
+def l_pk_battle_process_new(d):# PK过程
     a=d["data"]
     i=a["init_info"]
     m=a["match_info"]
@@ -355,7 +370,7 @@ def l_recommend_card(d,s):# 推荐卡片
 def l_goto_buy_flow(d):# 购买推荐
     p("广告",d["text"])
 def l_log_in_notice(d):# 登录通知
-    print(f"{B_02}{TRTG}[需要登录]{CD}",d["notice_msg"],DF)
+    p("需要登录",d["notice_msg"],b=B_02)
 def l_guard_honor_thousand(d):# 千舰主播增减
     def ts(l:list[int])->list[str]:
         r:list[str]=[]

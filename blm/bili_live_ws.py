@@ -246,6 +246,16 @@ def test_pack_add(c:str)->NoReturn:# 对数据包进行计数(理论上能对任
 
 def pct(name:str,*data:Any)->NoReturn:# 统一按照一定规则输出数据
     if not isinstance(name,str):raise TypeError("name必须为str")
+    o=runoptions
+    if isinstance(o.add_time,str):
+        at=o.add_time
+        if at=="datetime": t=time.strftime(TIMEFORMAT)
+        elif at=="time": t=time.strftime("%H:%M:%S")
+        elif at=="timestamp": t=str(int(time.time()))
+        else: t=""
+        if t:
+            print(t,f"[{name}]",*data)
+            return
     print(f"[{name}]",*data)
 
 def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
@@ -346,6 +356,8 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "LIKE_INFO_V3_CLICK":# 点赞点击
             if not o.no_interact_word:# 使用屏蔽交互信息的选项
                 l_like_info_v3_click(pack["data"])
+        case "LIKE_INFO_V3_NOTICE":# 点赞提示
+            if not o.no_like_info_notice:l_like_info_v3_notice(pack["data"])
         case "POPULAR_RANK_CHANGED":# 人气排行更新
             if not o.no_rank_changed:l_popular_rank_changed(pack["data"])
         case "AREA_RANK_CHANGED":# 大航海排行更新
@@ -422,6 +434,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             "PK_BATTLE_MULTIPLE_RES"|# 没看懂
             "POPULARITY_RED_POCKET_WINNER_LIST"|# 看起来好像是得到红包的列表
             "POPULARITY_RED_POCKET_V2_WINNER_LIST"|# 同上
+            None# 防错误
         ): test_pack_add(cmd)
         case _:# 未知命令
             log.debug(f"未支持的cmd: '{cmd}'")
@@ -808,6 +821,15 @@ def l_like_info_v3_update(d):
     pct("计数","点赞点击数量:",d["click_count"])
 def l_like_info_v3_click(d):
     pct("交互",d["uname"],d["like_text"])
+def l_like_info_v3_notice(d):
+    s=False
+    for i in d["content_segments"]:
+        t=i["type"]
+        if t==1: pct("通知",i["text"])
+        else:
+            pct("支持","不支持的点赞通知类型",t)
+            s=True
+    if s:raise SavePack(f"未知点赞通知类型:{t}")
 def l_popular_rank_changed(d):
     pct("排行","人气榜第",d["rank"],"名")
 def l_area_rank_changed(d):
@@ -1008,6 +1030,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None)->argparse.Name
     cmd.add_argument("--no-super-chat-entrance",help="关醒目留言入口信息",action="store_true")
     cmd.add_argument("--no-popularity-red-pocket",help="关闭红包信息",action="store_true")
     cmd.add_argument("--no-like-info-update",help="关闭点赞计数信息",action="store_true")
+    cmd.add_argument("--no-like-info-notice",help="关闭点赞通知信息",action="store_true")
     cmd.add_argument("--no-rank-changed",help="关闭所有全站排行榜更新",action="store_true")
     cmd.add_argument("--no-dm-interaction",help="关闭交互合并信息",action="store_true")
     cmd.add_argument("--no-pk-message",help="关闭全部PK信息",action="store_true")
@@ -1025,6 +1048,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None)->argparse.Name
     # 附加功能
     parser.add_argument("-S","--shielding-words",help="屏蔽词(完全匹配)",type=argparse.FileType("rt"),metavar="FILE")
     parser.add_argument("-B","--blocking-rules",help="屏蔽规则",type=argparse.FileType("rt"),metavar="FILE")
+    parser.add_argument("--add-time",help="建议命令处理添加时间显示",nargs="?",const="datetime",choices=["datetime","time","timestamp"])
     # 处理其它模块的命令行参数需求
     def setit(n):# 只可在下面的循环中使用
         ov=ari.get(n)
