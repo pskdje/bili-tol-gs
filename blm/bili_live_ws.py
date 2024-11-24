@@ -301,6 +301,10 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             l_room_lock(pack)
         case "ROOM_ADMINS":# 房管列表
             l_room_admins(pack)
+        case "room_admin_entrance":
+            l_room_admin_entrance(pack)
+        case "ROOM_ADMIN_REVOKE":
+            l_room_admin_revoke(pack)
         case "CHANGE_ROOM_INFO":# 背景更换
             l_change_room_info(pack)
         case "DANMU_AGGREGATION":# 弹幕聚集
@@ -612,7 +616,7 @@ def set_wslog()->NoReturn:# 保存ws客户端日志
     wslog.addHandler(h)
     print("已启用ws记录")
 
-def shielding_words(f:typing.IO)->NoReturn:
+def shielding_words(f:typing.TextIO)->NoReturn:
     """屏蔽词"""
     print("解析屏蔽词…")
     try:
@@ -628,7 +632,7 @@ def shielding_words(f:typing.IO)->NoReturn:
         f.close()
         log.debug(f"屏蔽词: {swd}")
         idp(swd)
-def blocking_rules(f:typing.IO)->NoReturn:
+def blocking_rules(f:typing.TextIO)->NoReturn:
     """屏蔽规则"""
     print("解析屏蔽规则…")
     try:
@@ -752,6 +756,10 @@ def l_room_lock(p):
     pct("直播","直播间",p["roomid"],"被封禁，解除时间:",p["expire"])
 def l_room_admins(p):
     pct("直播",f"房管列表: len({len(p['uids'])})")
+def l_room_admin_entrance(p):
+    pct("直播","添加",p["uid"],"为房管，消息:",p["msg"])
+def l_room_admin_revoke(p):
+    pct("直播","撤销",p["uid"],"的房管权限，消息:",p["msg"])
 def l_change_room_info(p):
     pct("直播","直播间",p["roomid"],"信息变更","背景图:",p["background"])
 def l_online_rank_count(d):
