@@ -175,6 +175,10 @@ def l_room_lock(b):# 封禁
     p("直播","直播间"+TRMI,b["roomid"],CD+"被封禁，解除时间:",b["expire"])
 def l_room_admins(b):# 房管列表
     p("直播",f"房管列表: len({len(b['uids'])})")
+def l_room_admin_entrance(b):# 添加房管
+    p("直播","添加"+TNUM,b["uid"],CD+"为房管，消息:"+TSTR,b["msg"])
+def l_room_admin_revoke(b):# 撤销房管
+    p("直播","撤销"+TNUM,b["uid"],CD+"的房管权限，消息:"+TSTR,b["msg"])
 def l_change_room_info(b):# 背景更换
     p("直播",f"直播间 {TRMI}{b['roomid']}{CD} 信息变更 背景图: {DU}{b['background']}")
 def l_danmu_aggregation(d):# 弹幕聚集
@@ -267,6 +271,15 @@ def l_like_info_v3_update(d):# 点赞数量
     p("计数","点赞点击数量:"+TNUM,d["click_count"])
 def l_like_info_v3_click(d):# 点赞点击
     p("交互",f"{TUSR}{d['uname']}{CD} {d['like_text']}")
+def l_like_info_v3_notice(d):# 点赞通知
+    s=False
+    for i in d["content_segments"]:
+        t=i["type"]
+        if t==1: p("通知",i["text"])
+        else:
+            p("支持","不支持的点赞通知类型",t)
+            s=True
+    if s:raise SavePack(f"未知点赞通知类型:{t}")
 def l_popular_rank_changed(d):# 人气排行更新
     p("排行","人气榜第"+TNUM,d["rank"],CD+"名")
 def l_area_rank_changed(d):# 大航海排行更新
@@ -392,11 +405,61 @@ def l_anchor_lot_award(d):# 天选时刻开奖
     p("天选时刻",d["award_name"],f"{d['award_num']}人","已开奖",f"{TKEY}id:{TNUM}{d['id']}{CD}",f"中奖用户数量{len(d['award_users'])}")
 def l_anchor_normal_notify(d):# 推荐提示
     p("通知","推荐",f"{TKEY}type:{TNUM}{d['type']}{TKEY},show_type:{TNUM}{d['show_type']}{CD}",d["info"]["content"])
-def l_popular_rank_guide_card(d):
+def l_popular_rank_guide_card(d):# 冲榜提示卡
     h="提示"
     p(h,d["title"])
     p(h,d["sub_text"])
     p(h,d["popup_title"])
+def l_anchor_ecology_living_dialog(d):# 警告对话框
+    h="对话框"
+    z="支持"
+    s=False
+    sp=lambda i:str(i["show_platform"])+" "
+    p(h,f"标题: {EB}{d['dialog_title']}{DF}")
+    for i in d["dialog_message_list"]:
+        if i["type"]==1:
+            p(h,f"{i['label']}：{i['content']}")
+        else:
+            p(z,"未知对话框内容类型"+TNUM,i["type"])
+            s=True
+    for i in d["dialog_tip_list"]:
+        t=sp(i)
+        for i1 in i["message_list"]:
+            if i1["type"]in[1,2]:t+=i1["content"]
+            else:s=True
+        p(h,f"提示: {B_10}{t}{BD}")
+    for i in d["dialog_button_list"]:
+        if i["button_action"]==1:
+            p(h,"[按钮:关闭窗口]",i["button_text"])
+        else:s=True
+    if s:raise SavePack("对话框有某个类型未知")
+def l_cut_off_v2(d):# 断开直播间v2
+    z="支持"
+    if d["cut_off_version"]!=1:
+        p(z,"不支持的切断直播间数据")
+        raise SavePack("切断直播间")
+    cut=d["cut_off_data"]
+    h="直播"
+    s=False
+    sp=lambda i:str(i["show_platform"])+" "
+    p(h,f"窗口标题: {EB}{cut['cut_off_title']}{DF}")
+    for i in cut["cut_off_message_list"]:
+        if i["type"]==1:
+            p(h,f"{i['label']}：{i['content']}")
+        else:
+            p(z,"未知对话框内容类型"+TNUM,i["type"])
+            s=True
+    for i in cut["cut_off_tip_list"]:
+        t=sp(i)
+        for i1 in i["message_list"]:
+            if i1["type"]in[1,2]:t+=i1["content"]
+            else:s=True
+        p(h,f"提示: {B_10}{t}{BD}")
+    for i in cut["cut_off_button_list"]:
+        if i["button_action"]==1:
+            p(h,"[按钮:关闭窗口]",i["button_text"])
+        else:s=True
+    if s:raise SavePack("对话框有某个类型未知")
 def l_sys_msg(b):# 系统消息
     p("系统消息",b["msg"])
 def l_play_tag(d):# 直播进度条标签

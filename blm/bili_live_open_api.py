@@ -114,6 +114,7 @@ class BiliLiveOpenAPIClient():
         finally:
             self._p("\r关闭客户端…")
             lh.cancel("stop")
+            blw.hpst.cancel("stop")
             self.req_end()
 
 blw.create_joinroom_pack_funs.append(BiliLiveOpenAPIClient.joinroom)

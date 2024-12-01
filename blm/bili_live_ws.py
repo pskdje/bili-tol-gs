@@ -180,7 +180,7 @@ async def hps(ws):# 每过30秒发送一次心跳包
         log.debug(f"心跳包: {p}",stacklevel=2)
         return p
     try:
-        while not ws.closed:
+        while True:
             await ws.send(pl(hp()))
             await asyncio.sleep(30)
     except(# 捕捉正常关闭时会引发的异常
@@ -590,6 +590,7 @@ def start(roomid:int,o:argparse.Namespace)->NoReturn:
         print("uid也不要替换为0，随便一个正数。如果uid为0，这边会更偏向于没有正确使用参数导致出现问题。")
         sys.exit(1)
     except KeyboardInterrupt:
+        hpst.cancel("中断键按下")
         log.info("中断键按下，停止运行")
         log.debug(f"数据包计数: {test_pack_count}")
         raise
@@ -762,13 +763,13 @@ def l_room_admin_revoke(p):
     pct("直播","撤销",p["uid"],"的房管权限，消息:",p["msg"])
 def l_change_room_info(p):
     pct("直播","直播间",p["roomid"],"信息变更","背景图:",p["background"])
+def l_danmu_aggregation(d):
+    pass
 def l_online_rank_count(d):
     olc=""
     if "online_count"in d:
         olc="在线计数: "+str(d["online_count"])
     pct("计数","高能用户计数:",d["count"],olc)
-def l_danmu_aggregation(d):
-    pass
 def l_little_tips(d):
     pct("提示",d["msg"])
 def l_little_message_box(d):
@@ -929,7 +930,7 @@ def l_anchor_ecology_living_dialog(d):
     sp=lambda i:str(i["show_platform"])+" "
     pct(h,"标题:",d["dialog_title"])
     for i in d["dialog_message_list"]:
-        if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
+        if i["type"]==1: pct(h,f"{i['label']}：{i['content']}")
         else:
             pct(z,"未知对话框内容类型",i["type"])
             s=True
@@ -954,7 +955,7 @@ def l_cut_off_v2(d):
     sp=lambda i:str(i["show_platform"])+" "
     pct(h,"窗口标题:",cut["cut_off_title"])
     for i in cut["cut_off_message_list"]:
-        if i["type"]==1:print(h,f"{i['label']}：{i['content']}")
+        if i["type"]==1: pct(h,f"{i['label']}：{i['content']}")
         else:
             pct(z,"未知对话框内容类型",i["type"])
             s=True
