@@ -118,6 +118,10 @@ python "bili live msg.py" [roomid]
 
 从保存的数据包中筛选出需要的数据。
 
+## [bili_live_tool.py]
+
+开播组件。
+
 ## 参考
 
 [SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) 提供数据包格式和URL

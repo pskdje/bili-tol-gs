@@ -98,7 +98,7 @@ def error(d=None)->NoReturn:# 错误记录
         print("写入异常信息到文件失败！")
         nsf()
     else:
-        log.debug(f"错误信息已存储至: {fp}")
+        log.debug(f"错误信息已存储至: {fp.absolute()}")
         if DEBUG:print("错误信息已存储至",str(fp))
     cumulative_error_count+=1
 
@@ -131,7 +131,7 @@ class Proto(typing.NamedTuple):
     def __len__(self):
         return len(self.body)
     @classmethod
-    def unpack(cls,pk)->typing.Self:
+    def unpack(cls,pk:bytes)->typing.Self:
         """解析服务器下发的数据包"""
         if not isinstance(pk,bytes):raise TypeError("需要字节串类型数据包")
         if len(pk)<16:raise ValueError("数据包长度不足")
@@ -185,7 +185,7 @@ async def hps(ws):# 每过30秒发送一次心跳包
             await asyncio.sleep(30)
     except(# 捕捉正常关闭时会引发的异常
         KeyboardInterrupt,
-        websockets.exceptions.ConnectionClosedOK
+        websockets.ConnectionClosedOK
     ):pass# 忽略
     except Exception:
         error()
@@ -196,7 +196,7 @@ def fahp(data:bytes)->int:# 合并(用于处理人气值)
 
 def femsgd(msg:bytes)->list[dict]|None:# 分割数据包
     data=msg.split(b"\0\x10\0\0\0\0\0\x05\0\0\0\0")[1:]# 能跑就行
-    packlist=[]
+    packlist:list[dict]=[]
     try:
         for item in data:
             if len(item)==4:continue
@@ -215,9 +215,9 @@ def save_http_error(r:requests.Response,t:str)->NoReturn:
     header="header:\n"
     for k,v in r.headers.items():
         header+=f"\t{k}: {v}\n"
-    error(f"info: {t}\nurl: {r.url}"
+    error(f"info: {t}\nurl: {r.url} "
         f"status: {r.status_code} {r.reason}\n"+
-        header+"body:\n"+r.text+"\n")
+        header+f"body:[{r.encoding}]\n"+r.text+"\n")
 
 class SavePack(RuntimeError):
     """用于保存数据包的异常"""
@@ -464,7 +464,7 @@ def pacs(packlist:list[dict],o:argparse.Namespace)->NoReturn:
             this_error_count+=1
             log.info(f"数据包处理时出现异常，当前处理列表发生的错误数: {this_error_count} ，累计错误数: {cumulative_error_count}")
             print("数据错误",file=sys.stderr)
-            ie=o.pack_error_no_exit
+            ie:bool=o.pack_error_no_exit
             if DEBUG: ie=False
             if this_error_count>2:
                 ie=True
@@ -559,15 +559,11 @@ def start(roomid:int,o:argparse.Namespace)->NoReturn:
         ws_host=f"{u['host']}:{u['wss_port']}"
         token=d["data"]["token"]
         asyncio.run(bililivemsg(f"wss://{ws_host}/sub",o,{"id":roomid,"k":token,"uid":o.uid}))
-    except websockets.exceptions.ConnectionClosedError as e:
+    except websockets.ConnectionClosedError as e:
         log.warning("连接关闭: "+str(e))
         error()
         print("连接关闭:",e)
         if (o.sessdata or o.uid) and time.time()-starttime<10:print("检测到使用了登录会话信息，请检查相关参数的正确性和有效性。")
-        sys.exit(1)
-    except websockets.exceptions.InvalidMessage as e:
-        error()
-        print("信息错误:",e)
         sys.exit(1)
     except TimeoutError:
         log.warning("超时")
@@ -993,14 +989,18 @@ def get_SESSDATA(s:str)->str|None:# 获取登录会话标识
         return None
     return s
 
-def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None)->argparse.Namespace:
+def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None,desc:str=None,epil:str=None)->argparse.Namespace:
     """命令行参数解析"""
     global DEBUG
     global runoptions
     if runoptions:raise RuntimeError("检测到已进行过一次命令行参数获取")
-    desc="哔哩哔哩直播信息流处理\n允许使用@来引入参数文件\n默认在文件夹下会附带bili_live_ws.md来提供额外信息"
-    epil="关于登录信息的使用可查看md的参数部分。"
-    parser=ArgsParser(usage="%(prog)s [options] roomid",description=desc,epilog=epil,formatter_class=argparse.RawDescriptionHelpFormatter,fromfile_prefix_chars="@")
+    de="哔哩哔哩直播信息流处理\n允许使用@来引入参数文件\n默认在文件夹下会附带bili_live_ws.md来提供额外信息"
+    ep="关于登录信息的使用可查看md的参数部分。"
+    if desc:
+        de+="\n;其它模块提供的信息:\n"+str(desc)
+    if epil:
+        ep+="\n*"+str(epil)
+    parser=ArgsParser(usage="%(prog)s [options] roomid",description=de,epilog=ep,formatter_class=argparse.RawDescriptionHelpFormatter,fromfile_prefix_chars="@")
     parser.add_argument("roomid",help="直播间ID",type=int,default=23058)
     parser.add_argument("-d","--debug",help="开启调试模式",action="store_true")
     parser.add_argument("--sessdata",help="使用登录会话标识",type=get_SESSDATA,metavar="SESSDATA|FILE")
@@ -1078,6 +1078,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None)->argparse.Name
             setit("default")
             setit("type")
             setit("choices")
+            setit("required")
             setit("metavar")
             setit("dest")
             log.debug(str(ota.add_argument(arin,**aro)))
@@ -1113,6 +1114,7 @@ def main():# 启动
             print("被测试的cmd计数:")
             print_test_pack_count()
         sys.exit(0)
+log.info(f"当前运行路径: {Path.cwd()}")
 if __name__=="__main__":
     print("=[哔哩哔哩直播信息流]=")
     log.info("文件已作为顶层入口")
