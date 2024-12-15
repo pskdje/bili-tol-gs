@@ -301,9 +301,9 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             l_room_lock(pack)
         case "ROOM_ADMINS":# 房管列表
             l_room_admins(pack)
-        case "room_admin_entrance":
+        case "room_admin_entrance":# 添加房管
             l_room_admin_entrance(pack)
-        case "ROOM_ADMIN_REVOKE":
+        case "ROOM_ADMIN_REVOKE":# 撤销房管
             l_room_admin_revoke(pack)
         case "CHANGE_ROOM_INFO":# 背景更换
             l_change_room_info(pack)
@@ -418,6 +418,8 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             if not o.no_anchor_lot:l_anchor_lot_end(pack["data"])
         case "ANCHOR_LOT_AWARD":# 天选时刻开奖
             if not o.no_anchor_lot:l_anchor_lot_award(pack["data"])
+        case "ANCHOR_LOT_NOTICE":# 天选时刻通知
+            if not o.no_anchor_lot:l_anchor_lot_notice(pack["data"])
         case "ANCHOR_NORMAL_NOTIFY":# 推荐提示(推测)
             if not o.no_anchor_normal_notify:l_anchor_normal_notify(pack["data"])
         case "POPULAR_RANK_GUIDE_CARD":# 冲榜提示卡(推测)(发包情况未知)
@@ -426,6 +428,8 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             l_anchor_ecology_living_dialog(pack["data"])
         case "CUT_OFF_V2":# 切断直播间(v2)
             l_cut_off_v2(pack["data"])
+        case "ROOM_CONTENT_AUDIT_REPORT":# 直播间内容审核结果
+            if not o.no_room_content_audit_report:l_room_content_audit_report(pack["data"])
         case "SYS_MSG":# 系统消息(推测)
             if not o.no_sys_msg:l_sys_msg(pack)
         case "PLAY_TAG":# 直播进度条节点标签
@@ -912,6 +916,12 @@ def l_anchor_lot_end(d):
     pct("天选时刻","id为",d["id"],"的天选时刻已结束")
 def l_anchor_lot_award(d):
     pct("天选时刻",d["award_name"],f"{d['award_num']}人","已开奖",f"id:{d['id']}",f"中奖用户数量{len(d['award_users'])}")
+def l_anchor_lot_notice(d):
+    if d["notice_type"]!=1:
+        pct("支持","天选时刻类型为:",d["notice_type"])
+        raise SavePack("未知的天选通知类型")
+    c=d["lottery_card"]
+    pct("天选时刻","通知卡",c["title"])
 def l_anchor_normal_notify(d):
     pct("通知","推荐",f"type:{d['type']},show_type:{d['show_type']}",d["info"]["content"])
 def l_popular_rank_guide_card(d):
@@ -965,6 +975,8 @@ def l_cut_off_v2(d):
         if i["button_action"]==1: pct(h,"[按钮:关闭窗口]",i["button_text"])
         else:s=True
     if s:raise SavePack("对话框有某个类型未知")
+def l_room_content_audit_report(d):
+    pct("直播","内容审核报告:",d["audit_reason"])
 def l_sys_msg(p):
     pct("系统消息",p["msg"])
 def l_play_tag(d):
@@ -1052,6 +1064,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None,desc:str=None,e
     cmd.add_argument("--no-anchor-lot",help="关闭天选时刻信息",action="store_true")
     cmd.add_argument("--no-anchor-normal-notify",help="关闭推荐通知信息",action="store_true")
     cmd.add_argument("--no-popular-rank-guide-card",help="关闭冲榜提示信息",action="store_true")
+    cmd.add_argument("--no-room-content-audit-report",help="关闭直播间内容审核结果信息",action="store_true")
     cmd.add_argument("--no-sys-msg",help="关闭系统消息信息",action="store_true")
     cmd.add_argument("--no-play-tag",help="关闭进度条标签信息",action="store_true")
     # 附加功能

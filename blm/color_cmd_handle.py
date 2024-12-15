@@ -403,6 +403,12 @@ def l_anchor_lot_end(d):# 天选时刻结束
     p("天选时刻","id为",d["id"],"的天选时刻已结束")
 def l_anchor_lot_award(d):# 天选时刻开奖
     p("天选时刻",d["award_name"],f"{d['award_num']}人","已开奖",f"{TKEY}id:{TNUM}{d['id']}{CD}",f"中奖用户数量{len(d['award_users'])}")
+def l_anchor_lot_notice(d):
+    if d["notice_type"]!=1:
+        p("支持","天选时刻类型为:"+TNUM,d["notice_type"])
+        raise SavePack("未知的天选通知类型")
+    c=d["lottery_card"]
+    p("天选时刻","通知卡"+C_10,c["title"],f"{CD},按钮:{C_10}",c["button_text"])
 def l_anchor_normal_notify(d):# 推荐提示
     p("通知","推荐",f"{TKEY}type:{TNUM}{d['type']}{TKEY},show_type:{TNUM}{d['show_type']}{CD}",d["info"]["content"])
 def l_popular_rank_guide_card(d):# 冲榜提示卡
@@ -460,6 +466,8 @@ def l_cut_off_v2(d):# 断开直播间v2
             p(h,"[按钮:关闭窗口]",i["button_text"])
         else:s=True
     if s:raise SavePack("对话框有某个类型未知")
+def l_room_content_audit_report(d):
+    p("直播",f"直播间{TRMI}{d['room_id']}{CD}内容审核报告: {C_07}{d['audit_reason']}{CD} ,{TKEY}审核内容类型:{TNUM}{d['audit_content_type']}{CD},{TKEY}审核类型:{TNUM}{d['audit_status']}{CD}")
 def l_sys_msg(b):# 系统消息
     p("系统消息",b["msg"])
 def l_play_tag(d):# 直播进度条标签
