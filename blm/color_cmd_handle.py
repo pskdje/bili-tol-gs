@@ -181,6 +181,8 @@ def l_room_admin_revoke(b):# 撤销房管
     p("直播","撤销"+TNUM,b["uid"],CD+"的房管权限，消息:"+TSTR,b["msg"])
 def l_change_room_info(b):# 背景更换
     p("直播",f"直播间 {TRMI}{b['roomid']}{CD} 信息变更 背景图: {DU}{b['background']}")
+def l_warning(k):
+    p("警告",k['msg'],b=C_03)
 def l_danmu_aggregation(d):# 弹幕聚集
     p("弹幕聚集",f"{C_10}{d['msg']}{CD} {TNUM}×{d['aggregation_num']}")
 def l_online_rank_count(d):# 在线计数

@@ -1,9 +1,9 @@
 """哔哩哔哩直播信息流
-在Python 3.10或以上运行。经过测试的范围: 3.10 ~ 3.11
+在Python 3.10或以上运行。经过测试的范围: 3.10 ~ 3.12
 使用的第三方库: requests , websockets
 可选的第三方库: brotli
 数据包参考自: https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md
-数据分析由我自己进行，请注意时效(更新日期:2024/11/15,新增条目)
+数据分析由我自己进行，请注意时效(更新日期:2024/12/16,新增条目)
 已存在的cmd很难确认是否需要更新
 本文件计划只实现基本功能
 本文件自带一个异常保存功能，出现异常时调用error函数即可。
@@ -295,7 +295,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             if not o.no_stop_live_room_list:l_stop_live_room_list(pack["data"])
         case "ROOM_BLOCK_MSG":# 用户被禁言
             l_room_block_msg(pack)
-        case "CUT_OFF":# 警告
+        case "CUT_OFF":# 切断
             l_cut_off(pack)
         case "ROOM_LOCK":# 封禁
             l_room_lock(pack)
@@ -307,6 +307,8 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             l_room_admin_revoke(pack)
         case "CHANGE_ROOM_INFO":# 背景更换
             l_change_room_info(pack)
+        case "WARNING":# 警告
+            l_warning(pack)
         case "DANMU_AGGREGATION":# 弹幕聚集
             if not o.no_danmu_aggregation:l_danmu_aggregation(pack["data"])
         case "ONLINE_RANK_COUNT":# 在线计数
@@ -770,6 +772,8 @@ def l_room_admin_revoke(p):
     pct("直播","撤销",p["uid"],"的房管权限，消息:",p["msg"])
 def l_change_room_info(p):
     pct("直播","直播间",p["roomid"],"信息变更","背景图:",p["background"])
+def l_warning(p):
+    pct("警告",p["msg"])
 def l_danmu_aggregation(d):
     pass
 def l_online_rank_count(d):
