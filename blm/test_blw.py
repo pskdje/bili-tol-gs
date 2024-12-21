@@ -9,12 +9,14 @@ class PackTest(unittest.TestCase):
     def setUp(self):
         import bili_live_ws as blw
         self.blw=blw
+        self.encoding=blw.ENCODING
         self.arg=blw.pararg(args=["1"])
         blwp=Path("bili_live_ws_pack")
         self.packlist=blwp.glob("*.json")
     def test_pack(self):
+        o=self.blw.RelOpt(self.arg)
         for pp in self.packlist:
-            p=json.loads(pp.read_text())
+            p=json.loads(pp.read_text(encoding=self.encoding))
             with self.subTest(name=pp.name):
                 try:
                     self.blw.pac(p,self.arg)

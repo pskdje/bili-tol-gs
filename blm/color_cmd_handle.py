@@ -123,7 +123,7 @@ def l_interact_word(d,o):# 交互
     mt=d["msg_type"]
     nm=f"{TUSR}{d['uname']}{CD}"
     if mt==1:
-        if not o.no_enter_room:
+        if o.enter_room:
             p(info,nm,"进入直播间")
     elif mt==2:
         p(info,nm,"关注直播间")
@@ -132,7 +132,7 @@ def l_interact_word(d,o):# 交互
     else:
         t=f"未知的交互类型: {d['msg_type']}"
         log.debug(t)
-        if not o.no_print_enable:
+        if o.print_enable:
             p("支持",t)
         raise SavePack("未知的交换类型")
 def l_entry_effect(d):# 进场
