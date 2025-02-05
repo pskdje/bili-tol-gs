@@ -460,6 +460,10 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             if o.rank_changed:l_chg_rank_refresh(pack["data"])
         case "POPULARITY_RANK_TAB_CHG":# 排行标签更新？
             if o.rank_changed:l_popularity_rank_tab_chg(pack["data"])
+        case "ANCHOR_BROADCAST":# 初次抵达某种情况时的提示
+            l_anchor_broadcast(pack["data"])
+        case "ANCHOR_HELPER_DANMU":# 同上，但是格式不同
+            l_anchor_helper_danmu(pack["data"])
         case(# 不进行支持
             "HOT_ROOM_NOTIFY"|# 未知，内容会在哔哩哔哩直播播放器日志中显示。
             "WIDGET_GIFT_STAR_PROCESS"|# 礼物星球，不想写支持。
@@ -467,6 +471,7 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             "PK_BATTLE_MULTIPLE_BEGIN"|# 看起来是某种pk加倍机制
             "PK_BATTLE_MULTIPLE_RES"|# 没看懂
             "PLAYTOGETHER_ICON_CHANGE"|# 陪玩图标？没看懂
+            "ENTRY_EFFECT_MUST_RECEIVE"|# 未知的进入信息，先做计数
             None# 防错误
         ): test_pack_add(cmd)
         case _:# 未知命令
@@ -1013,6 +1018,10 @@ def l_chg_rank_refresh(d):
     pass
 def l_popularity_rank_tab_chg(d):
     pass
+def l_anchor_broadcast(d):
+    pct("提示",d["sender"],d["msg"])
+def l_anchor_helper_danmu(d):
+    pct("提示",d["sender"],d["msg"])
 # 命令处理调用处(结束)
 
 def get_SESSDATA(s:str)->str|None:# 获取登录会话标识

@@ -213,9 +213,12 @@ def l_voice_join_status(d):# 连麦状态
 def l_online_rank_v2(d,npe):
     rt=d["rank_type"]
     if rt=="gold-rank":
-        p("排行","高能用户部分列表(gr):",f"len({len(d['list'])})")
+        p("排行","高能用户部分列表:",f"len({len(d['list'])})")
     elif rt=="online_rank":
-        p("排行","高能用户部分列表:",f"len({len(d['online_list'])})")
+        l=[]
+        for i in d["online_list"]:
+            l.append(f"{C_11}({i['rank']}){TUSR}{i['uname']}{CD}")
+        p("排行","在线用户部分列表:",f"{'、'.join(l)}")
     else:
         nt="未知的排行类型"
         log.debug(f"{nt}: '{d['rank_type']}'")
@@ -474,3 +477,9 @@ def l_sys_msg(b):# 系统消息
     p("系统消息",b["msg"])
 def l_play_tag(d):# 直播进度条标签
     p("直播","进度条标签",f"{TKEY}id:{TNUM}{d['tag_id']}{CD} 时间戳:{TNUM}{d['timestamp']}{CD} 类型: {TSTR}{d['type']}{CD} 图片: {DU}{d['pic']}")
+#def l_chg_rank_refresh(d):
+#def l_popularity_rank_tab_chg(d):
+def l_anchor_broadcast(d):# 初次抵达某种情况时的提示
+    p("提示",d["sender"],d["msg"])
+def l_anchor_helper_danmu(d):# 同上，但是格式不同
+    p("提示",d["sender"],d["msg"])

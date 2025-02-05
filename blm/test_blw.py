@@ -19,7 +19,7 @@ class PackTest(unittest.TestCase):
             p=json.loads(pp.read_text(encoding=self.encoding))
             with self.subTest(name=pp.name):
                 try:
-                    self.blw.pac(p,self.arg)
+                    self.blw.pac(p,o)
                 except self.blw.SavePack:
                     pass
 
