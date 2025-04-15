@@ -81,6 +81,7 @@ TNUM=C_06# 数字、数量
 TRMI=C_14# 房间号
 TKEY=cfc(27)# key
 TSTR=cfc(28)# string
+TBOL=cfc(29)# boolean
 
 # 正则表达式
 RGPL=re.compile("<%(.+?)%>")
@@ -164,7 +165,7 @@ def l_live(b):# 开始直播
 def l_preparing(b):# 结束直播
     p("直播",f"直播间 {TRMI}{b['roomid']}{CD} 结束直播{DF}",b=B_05)
 def l_room_real_time_message_update(d):# 数据更新
-    p("信息",f"{TRMI}{d['roomid']}{CD} 直播间 {TNUM}{d['fans']}{CD} 粉丝")
+    p("信息",f"{TRMI}{d['roomid']}{CD} 直播间 {TNUM}{d['fans']}{CD} 粉丝 {TNUM}{d['fans_club']}{CD} 点亮粉丝勋章")
 def l_stop_live_room_list(d):# 停止直播的房间列表
     p("停播","停止直播的房间列表:",f"len({len(d['room_id_list'])})")
 def l_room_block_msg(b):# 用户被禁言
@@ -393,7 +394,7 @@ def l_guard_honor_thousand(d):# 千舰主播增减
     def ts(l:list[int])->list[str]:
         r:list[str]=[]
         for i in l:
-            r.append(str(i))
+            r.append(TUSR+str(i)+CD)
         return r
     ad=ts(d["add"])
     dl=ts(d["del"])
@@ -483,3 +484,6 @@ def l_anchor_broadcast(d):# 初次抵达某种情况时的提示
     p("提示",d["sender"],d["msg"])
 def l_anchor_helper_danmu(d):# 同上，但是格式不同
     p("提示",d["sender"],d["msg"])
+def l_other_slice_loading_result(d):# 切片数据加载结果
+    for i in d["data"]:
+        p("事件","剪辑片段数据",f"开始于: {i['start_time']} ,结束于: {i['end_time']} ,片段视频流: {DU}{i['stream']}{DF} {TKEY}type:{TNUM}{i['type']}{CD},{TKEY}ban_ec:{TBOL}{i['ban_ec']}{CD}")

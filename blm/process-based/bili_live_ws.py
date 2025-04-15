@@ -3,7 +3,7 @@
 使用的第三方库: requests , websockets
 可选的第三方库: brotli
 数据包参考自: https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md
-数据分析由我自己进行，请注意时效(更新日期:2024/12/16,新增条目)
+数据分析由我自己进行，请注意时效(更新日期:2025/02/21,新增条目)
 已存在的cmd很难确认是否需要更新
 本文件计划只实现基本功能
 本文件自带一个异常保存功能，出现异常时调用error函数即可。
@@ -423,9 +423,11 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
         case "PK_BATTLE_VIDEO_PUNISH_END":# 同上，少了data部分
             if o.pk_message:l_pk_battle_video_punish_end(pack)
         case "RECOMMEND_CARD":# 推荐卡片
-            if o.recommend_card:l_recommend_card(pack["data"],o.save_recommend_card)
-        case "GOTO_BUY_FLOW":# 购买推荐(?)
-            if o.goto_buy_flow:l_goto_buy_flow(pack["data"])
+            if o.recommend_card:l_recommend_card(pack["data"],False)# 参数2已弃用
+        case "GOTO_BUY_FLOW":# 购买商品
+            if o.buy_flow_info:l_goto_buy_flow(pack["data"])
+        case "HOT_BUY_NUM":# 热购数量
+            if o.buy_flow_info:l_hot_buy_num(pack["data"])
         case "LOG_IN_NOTICE":# 登录提示
             l_log_in_notice(pack["data"])
         case "GUARD_HONOR_THOUSAND":# 千舰主播增减
@@ -464,6 +466,8 @@ def pac(pack:dict,o:argparse.Namespace):# 匹配cmd,处理内容
             l_anchor_broadcast(pack["data"])
         case "ANCHOR_HELPER_DANMU":# 同上，但是格式不同
             l_anchor_helper_danmu(pack["data"])
+        case "OTHER_SLICE_LOADING_RESULT":# 切片数据加载结果
+            if o.event:l_other_slice_loading_result(pack["data"])
         case(# 不进行支持
             "HOT_ROOM_NOTIFY"|# 未知，内容会在哔哩哔哩直播播放器日志中显示。
             "WIDGET_GIFT_STAR_PROCESS"|# 礼物星球，不想写支持。
@@ -777,7 +781,7 @@ def l_live(p):
 def l_preparing(p):
     pct("直播","直播间",p["roomid"],"结束直播")
 def l_room_real_time_message_update(d):
-    pct("信息",d["roomid"],"直播间",d["fans"],"粉丝")
+    pct("信息",d["roomid"],"直播间",d["fans"],"粉丝",d["fans_club"],"点亮粉丝勋章")
 def l_stop_live_room_list(d):
     pass
 def l_room_block_msg(p):
@@ -930,11 +934,12 @@ def l_pk_battle_punish_end(p):
     pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
 def l_pk_battle_video_punish_end(p):
     pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
-def l_recommend_card(d,s):
+def l_recommend_card(d,s):# s已弃用
     pct("广告","推荐卡片","推荐数量:",len(d["recommend_list"]),"更新数量:",len(d["update_list"]))
-    if s:raise SavePack("保存推荐卡片")
 def l_goto_buy_flow(d):
     pct("广告",d["text"])
+def l_hot_buy_num(d):
+    pct("广告","商品id",d["goods_id"],"热抢数量",d["num"])
 def l_log_in_notice(d):
     pct("需要登录",d["notice_msg"])
 def l_guard_honor_thousand(d):
@@ -1022,6 +1027,9 @@ def l_anchor_broadcast(d):
     pct("提示",d["sender"],d["msg"])
 def l_anchor_helper_danmu(d):
     pct("提示",d["sender"],d["msg"])
+def l_other_slice_loading_result(d):
+    for i in d["data"]:
+        pct("事件","剪辑片段数据","开始于:",i["start_time"],",结束于:",i["end_time"],",片段视频流:",i["stream"])
 # 命令处理调用处(结束)
 
 def get_SESSDATA(s:str)->str|None:# 获取登录会话标识
@@ -1078,6 +1086,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None,desc:str=None,e
     cmd.add_argument("--no-combo-send",help="关闭组合礼物信息",action="store_true")
     cmd.add_argument("--no-watched-change",help="关闭看过信息",action="store_true")
     cmd.add_argument("--no-super-chat-message",help="关闭醒目留言信息",action="store_true")
+    cmd.add_argument("--no-event",help="关闭归类为事件的信息",action="store_true")
     cmd.add_argument("--no-live-interactive-game",help="关闭特殊数据格式弹幕",action="store_true")
     cmd.add_argument("--no-stop-live-room-list",help="关闭停止直播的房间列表信息",action="store_true")
     cmd.add_argument("--no-danmu-aggregation",help="关闭弹幕聚集信息",action="store_true")
@@ -1101,8 +1110,7 @@ def pararg(aarg:list[dict]|tuple[dict,...]=None,*,args:list=None,desc:str=None,e
     cmd.add_argument("--no-pk-message",help="关闭全部PK信息",action="store_true")
     cmd.add_argument("--no-pk-battle-process",help="关闭PK过程信息",action="store_true")
     cmd.add_argument("--no-recommend-card",help="关闭推荐卡片信息",action="store_true")
-    cmd.add_argument("--save-recommend-card",help="保存推荐卡片信息(调试)",action="store_true")
-    cmd.add_argument("--no-goto-buy-flow",help="关闭购买推荐商品信息",action="store_true")
+    cmd.add_argument("--no-buy-flow-info",help="关闭推荐商品信息",action="store_true")
     cmd.add_argument("--no-guard-honor-thousand",help="关闭千舰主播增减信息",action="store_true")
     cmd.add_argument("--no-gift-star-process",help="关闭礼物星球进度信息",action="store_true")
     cmd.add_argument("--no-anchor-lot",help="关闭天选时刻信息",action="store_true")
