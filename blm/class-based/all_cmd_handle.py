@@ -116,7 +116,7 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         """某种提示，内容可能与使用的会话信息有关"""
         d=p["data"]
         s.pct("提示",d["msg"])
-    def l_little_message_box(s,p):
+    def l_LITTLE_MESSAGE_BOX(s,p):
         """弹框提示"""
         d=p["data"]
         s.pct("弹框",d["msg"])
@@ -235,15 +235,15 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
     def l_LIKE_INFO_V3_NOTICE(s,p):
         """点赞通知"""
         d=p["data"]
-        s=False
+        e=False
         for i in d["content_segments"]:
             t=i["type"]
             if t==1:
                 s.pct("通知",i["text"])
             else:
                 s.pct("支持","不支持的点赞通知类型",t)
-                s=True
-        if s:
+                e=True
+        if e:
             raise SavePack(f"未知点赞通知类型:{t}")
     def l_POPULAR_RANK_CHANGED(s,p):
         """人气排行榜更新(可能已弃用)"""

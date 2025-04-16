@@ -1,9 +1,49 @@
 """blw扩展
 """
 
-import sys,time
 import blw
+import sys,time,re,argparse
 from blw import GetDataError,WSClientError,log
+from typing import Any
+
+__all__=[
+    "add_no_cmd_args",
+    "read_text_continue_h",
+    "BiliLiveExp",
+    "BiliLiveBlackWordExp",
+    "BiliLiveMsg",
+]
+
+def add_no_cmd_args(cmd_args:list[dict],cmd_name_list:dict[str,str],help:Any=None)->list[dict]:
+    """为cmd_args附加cmd参数
+    cmd_args: 被附加参数选项字典的对象
+    cmd_name_list: 一个cmd名称为键，帮助内容为值所组成的字典
+    返回值: cmd_args参数输入的列表
+    """
+    if not isinstance(cmd_name_list,dict):
+        raise TypeError("cmd_name_list需要一个键值对的字典")
+    for name in cmd_name_list:
+        cmd_args.append({
+            "name":"--no-"+str(name),
+            "help":f"关闭{cmd_name_list[name]}信息",
+            "action":"store_true",
+        })
+    return cmd_args
+
+def read_text_continue_h(path:str):
+    """读取文件，并在读取过程中忽略#开头的文本"""
+    i=0
+    with open(path,"rt")as f:
+        for l in f:
+            t=l.rstrip("\r\n")
+            if not t:
+                continue
+            if t[0]=="#":
+                continue
+            yield t
+            i+=1
+            if i>65535:
+                return "条目过多"
 
 class BiliLiveExp(blw.BiliLiveWS):
     """哔哩哔哩直播信息流一般基本扩展"""
@@ -23,10 +63,10 @@ class BiliLiveExp(blw.BiliLiveWS):
                     title=i.get("title"),
                     description=i.get("desc")
                 )
-                self.from_list_add_args(tg,i["list"])
+                blw.from_list_add_args(tg,i["list"])
             else:
                 top_args.append(i)
-        self.from_list_add_args(argp,top_args)
+        blw.from_list_add_args(argp,top_args)
 
     def get_room_init(self)->dict:
         """获取直播间初始化信息，若需要主播uid或者将短号转为原始房间号必须调用"""
@@ -36,7 +76,7 @@ class BiliLiveExp(blw.BiliLiveWS):
         return d
     def get_room_info(self)->dict:
         """获取直播间信息"""
-        return self.get_rest_data("获取直播间信息","https://api.live.bilibili.com/room/v1/Room/get_info?room_id="+str(self.up_uid))["data"]
+        return self.get_rest_data("获取直播间信息","https://api.live.bilibili.com/room/v1/Room/get_info?room_id="+str(self.roomid))["data"]
     def get_master_info(self)->dict:
         """获取主播信息"""
         return self.get_rest_data("获取主播信息","https://api.live.bilibili.com/live_user/v1/Master/info?uid="+str(self.up_uid))["data"]
@@ -86,6 +126,44 @@ class BiliLiveExp(blw.BiliLiveWS):
         for i in d["durl"]:
             self.p(f"线路{i['order']}链接:",i["url"])
 
+class BiliLiveBlackWordExp(BiliLiveExp):
+    """屏蔽词命令行参数扩展"""
+
+    def from_file_handle_shielding_words(self,path:str)->list[str]:
+        """从文件处理屏蔽词"""
+        l=[]
+        try:
+            for t in read_text_continue_h(path):
+                l.append(t)
+        except OSError as e:
+            log.exception("读取屏蔽词时出现错误")
+            raise ValueError("读取屏蔽词失败: "+str(e))
+        return l
+    def from_file_handle_blocking_rules(self,path:str)->list[re.Pattern]:
+        """从文件处理屏蔽规则"""
+        l=[]
+        try:
+            for t in read_text_continue_h(path):
+                l.append(re.compile(t))
+        except OSError as e:
+            log.exception("读取屏蔽规则时出现错误")
+            raise ValueError("读取屏蔽规则失败: "+str(e))
+        return l
+
+    add_args=[
+        {"name":"--shielding-words","help":"屏蔽词(完全匹配)","default":[],"type":from_file_handle_shielding_words,"metavar":"FILE"},
+        {"name":"--blocking-rules","help":"屏蔽规则","default":[],"type":from_file_handle_blocking_rules,"metavar":"FILE"},
+    ]
+
+    @property
+    def swd(self)->list[str]:
+        """返回屏蔽词列表"""
+        return self.args.shielding_words
+    @property
+    def brs(self)->list[re.Pattern]:
+        """返回屏蔽规则列表"""
+        return self.args.blocking_rules
+
 class BiliLiveMsg(BiliLiveExp):
     """启用"""
 
@@ -96,7 +174,7 @@ class BiliLiveMsg(BiliLiveExp):
         {"name":"--add-time","help":"建议命令处理添加时间显示","nargs":"?","const":"datetime","choices":["datetime","time","timestamp"]},
     ]
 
-    def pct(self,name:str,*data)->None:
+    def pct(self,name:str,*data:Any)->None:
         """统一按照一定样式输出cmd处理后文本
         额外拥有添加时间的功能
         """

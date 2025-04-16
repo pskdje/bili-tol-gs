@@ -11,7 +11,7 @@
 import sys,time,json,re,zlib
 import errno,logging,traceback
 import typing,asyncio,argparse
-import struct
+import struct,warnings
 import requests
 import websockets
 from pathlib import Path
@@ -21,6 +21,32 @@ try:
 except ImportError:
     brotli=None
 
+__all__:list[str]=[
+    # 变量
+    "TIMEFORMAT",
+    "UA",
+    "VERSIONINFO",
+    "LOGDIRPATH",
+    "ENCODING",
+    # 函数
+    "error",
+    "pr",
+    "bst",
+    "res_log",
+    "from_list_add_args",
+    "bilipack",
+    "savepack",
+    "save_log",
+    # 异常
+    "BLWException",
+    "GetDataError",
+    "WSClientError",
+    "SavePack",
+    # 类
+    "Proto",
+    "ArgsParser",
+    "BiliLiveWS",
+]
 __version__:str="0"
 DEBUG:bool=False
 TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
@@ -131,6 +157,44 @@ class WSClientError(BLWException):
 
 class SavePack(BLWException):
     """保存数据包"""
+
+def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[dict]|tuple[dict,...])->list[str]:
+    """从列表添加命令行选项
+    argobj: 参数解析对象
+    arg_list: 一个或多个参数解析方法的列表
+    返回值: 一个添加成功参数名称的列表
+    """
+    add_args=[]
+    log.debug("将为参数解析对象添加参数: "+str(argobj))
+    def setit(n):# 只可在下面的循环中使用
+        ov=ari.get(n)
+        if ov is None:
+            return
+        aro[n]=ov
+    if not isinstance(arg_list,(list,tuple)):
+        raise TypeError("argobj需要为list或tuple类型")
+    for ari in arg_list:
+        if not isinstance(ari,dict):
+            continue
+        arin=ari.get("name")
+        if not isinstance(arin,str):
+            continue
+        if arin[0:2]!="--":
+            arin="--"+arin
+        aro={}# 参数组
+        setit("help")
+        setit("action")
+        setit("nargs")
+        setit("const")
+        setit("default")
+        setit("type")
+        setit("choices")
+        setit("required")
+        setit("metavar")
+        setit("dest")
+        log.debug(str(argobj.add_argument(arin,**aro)))
+        add_args.append(arin)
+    return add_args
 
 def bilipack(op:int,data:str,seq:int=0)->bytes:
     """返回要发送的数据包
@@ -326,37 +390,9 @@ class BiliLiveWS:
         arg_list: 一个或多个参数解析方法的列表
         返回值: 一个添加成功参数名称的列表
         """
-        add_args=[]
-        log.debug("将为参数解析对象添加参数: "+str(argobj))
-        def setit(n):# 只可在下面的循环中使用
-            ov=ari.get(n)
-            if ov is None:
-                return
-            aro[n]=ov
-        if not isinstance(arg_list,(list,tuple)):
-            raise TypeError("argobj需要为list或tuple类型")
-        for ari in arg_list:
-            if not isinstance(ari,dict):
-                continue
-            arin=ari.get("name")
-            if not isinstance(arin,str):
-                continue
-            if arin[0:2]!="--":
-                arin="--"+arin
-            aro={}# 参数组
-            setit("help")
-            setit("action")
-            setit("nargs")
-            setit("const")
-            setit("default")
-            setit("type")
-            setit("choices")
-            setit("required")
-            setit("metavar")
-            setit("dest")
-            log.debug(str(argobj.add_argument(arin,**aro)))
-            add_args.append(arin)
-        return add_args
+        warnings.warn("不建议通过调用类的from_list_add_args方法，请改为调用blw对应名称的函数",category=PendingDeprecationWarning)
+        return from_list_add_args(argobj,arg_list)
+
     def get_SESSDATA(self,s:str)->str|None:
         """获取登录会话数据"""
         rs=re.compile(r"(?:^|.*;\s*)SESSDATA\s*\=\s*([^;]*).*$")
@@ -407,7 +443,7 @@ class BiliLiveWS:
         dbg.add_argument("-c","--count-cmd",help="对某个cmd进行计数",action="append",metavar="CMD",default=[])
         dbg.add_argument("-s","--save-cmd",help="保存某个cmd数据包",action="append",metavar="CMD",default=[])
         cmd=parser.add_argument_group("关闭某个cmd的显示")
-        self.from_list_add_args(cmd,self.cmd_args)
+        from_list_add_args(cmd,self.cmd_args)
         return parser
     def other_arg_add(self,argp:argparse.ArgumentParser)->Any:
         """当 pararg 执行时会额外调用该函数，重写该方法来添加额外的命令行解析"""
