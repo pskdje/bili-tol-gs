@@ -36,6 +36,8 @@ __all__:list[str]=[
     "from_list_add_args",
     "bilipack",
     "savepack",
+    "wbi_getMixinKey",
+    "wbi_encode",
     "save_log",
     # 异常
     "BLWException",
@@ -47,7 +49,7 @@ __all__:list[str]=[
     "ArgsParser",
     "BiliLiveWS",
 ]
-__version__:str="0"
+__version__:str="1"
 DEBUG:bool=False
 TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
 UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
@@ -62,6 +64,12 @@ wslog=logging.getLogger("websockets.client")
 wslog.setLevel(logging.DEBUG)
 is_save_log:bool=False
 cumulative_error_count:int=0
+wbi_mixinKeyEncTab=[
+    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
+    33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
+    61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11,
+    36, 20, 34, 44, 52
+]# wbi重排映射表
 
 def error(v:dict[Any]=None,d:Any=None)->None:
     """记录异常
@@ -230,6 +238,37 @@ def savepack(d:dict)->bool:
         return False
     return True
 
+def wbi_getMixinKey(orig:str)->str:
+    """对 imgKey + subKey 的字符串顺序打乱编码，详见下面wbi_encode函数的说明"""
+    from functools import reduce
+    return reduce(lambda s,i:s+orig[i],wbi_mixinKeyEncTab,'')[:32]
+def wbi_encode(params:dict,imgKey:str,subKey:str)->argparse.Namespace:
+    """为请求参数进行 wbi 签名
+    代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md
+    """# 这东西一看就不想写
+    from urllib.parse import urlencode
+    from hashlib import md5
+    mixin_key=wbi_getMixinKey(imgKey+subKey)
+    pr=params.copy()
+    ct=int(time.time())
+    pr["wts"]=ct
+    pr=dict(sorted(pr.items()))
+    pr={# 过滤 value 中的 "!'()*" 字符
+        k:''.join(filter(lambda ch:ch not in "!'()*",str(v)))
+        for k,v
+        in pr.items()
+    }
+    qu=urlencode(pr)
+    wbi_sign=md5((qu+mixin_key).encode()).hexdigest()
+    pr=params.copy()
+    pr["wts"]=ct
+    pr["w_rid"]=wbi_sign
+    return argparse.Namespace(
+        query=urlencode(pr),
+        signed_params=pr,
+        curr_time=ct
+    )# 偷懒
+
 class Proto(typing.NamedTuple):
     """ws数据包映射"""
     length:int # 数据包总长度
@@ -275,6 +314,8 @@ class BiliLiveWS:
     """数据包递增"""
     roomid:int=0
     """房间号"""
+    uid:int=0
+    """用户uid"""
     hpst:asyncio.Task=None
     """循环发送心跳包任务暂存"""
     args:argparse.Namespace=None
@@ -285,6 +326,9 @@ class BiliLiveWS:
     """添加给cmd处理使用的命令行参数"""
     only_count_cmd:list[str]=[]
     """只计数cmd的列表"""
+
+    #wbi_imgKey
+    #wbi_subKey
 
     @property
     def debug(self)->bool:
@@ -303,6 +347,10 @@ class BiliLiveWS:
         self.cookies:dict[str,str]={}
         self.uid:int=0
         self.hpst=None
+    def __repr__(self)->str:
+        """对象概述"""
+        return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}>"
+
     def error(self,d:Any=None)->None:
         """记录异常，附带该类的部分变量"""
         error({
@@ -384,6 +432,12 @@ class BiliLiveWS:
             raise GetDataError(f"{rn}的code为{d['code']}，信息: {msg}")
         return d
 
+    def wbi_encode(self,params:dict)->argparse.Namespace:
+        """为请求参数进行 wbi 签名
+        详见同名模块级函数的说明
+        """
+        return wbi_encode(params,self.wbi_imgKey,self.wbi_subKey)
+
     def from_list_add_args(self,argobj:argparse.ArgumentParser,arg_list:list[dict]|tuple[dict,...])->list[str]:
         """从列表添加命令行选项
         argobj: 参数解析对象
@@ -448,12 +502,14 @@ class BiliLiveWS:
     def other_arg_add(self,argp:argparse.ArgumentParser)->Any:
         """当 pararg 执行时会额外调用该函数，重写该方法来添加额外的命令行解析"""
         pass
-    def pararg(self)->argparse.Namespace:
+    def pararg(self,args:list[str]=None)->argparse.Namespace:
         """分析命令行数据"""
         global DEBUG
         parser=self.build_argparser()
         self.other_arg_add(parser)
-        args=parser.parse_args()
+        if args is not None:
+            log.debug(f"从提供的参数列表来处理命令行参数: {args}")
+        args=parser.parse_args(args)
         DEBUG=DEBUG or args.debug
         log.debug(f"命令行参数: {args}")
         self.args=args

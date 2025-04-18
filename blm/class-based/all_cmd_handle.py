@@ -187,9 +187,10 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         """小部件"""
         d=p["data"]
         for wi in d["widget_list"]:
-            if d["widget_list"][wi]is None:
+            wic=d["widget_list"][wi]
+            if wic is None:
                 continue
-            s.pct("小部件",f"key:{wi}","id",d["widget_list"][wi]["id"],"标题:",d["widget_list"][wi]["title"])
+            s.pct("小部件",f"key:{wi}","id",wic["id"],"标题:",wic["title"])
     def l_SUPER_CHAT_ENTRANCE(s,p):
         """醒目留言入口变化"""
         d=p["data"]
@@ -267,12 +268,12 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         h="交互合并"
         n=json.loads(d["data"])
         t=d["type"]
-        if t==102:
+        if t==102:# 弹幕
             for c in n["combo"]:
                 s.pct(h,c["guide"],c["content"],"×"+str(c["cnt"]))
-        elif t==104:
+        elif t==104:# 送礼
             s.pct(h,n["cnt"],n["suffix_text"],"gift_id:",n["gift_id"])
-        elif t==103 or t==105 or t==106:
+        elif t==103 or t==105 or t==106:# 关注，分享，点赞
             s.pct(h,n["cnt"],n["suffix_text"])
         else:
             log.debug(f"未知的交互合并类型: {t}")
@@ -314,7 +315,7 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
     def l_PK_BATTLE_SETTLE_V2(s,p):
         """PK结算2"""
         a=p["data"]
-        pct("PK","PK结算",f"id:{p['pk_id']}",f"s:{p['pk_status']}","主播获得",a["result_info"]["pk_votes"],a["result_info"]["pk_votes_name"])
+        s.pct("PK","PK结算",f"id:{p['pk_id']}",f"s:{p['pk_status']}","主播获得",a["result_info"]["pk_votes"],a["result_info"]["pk_votes_name"])
     def l_PK_BATTLE_SETTLE_NEW(s,p):
         """PK结算并进入惩罚"""
         s.pct("PK","进入惩罚时间",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
@@ -449,10 +450,10 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
     def l_ROOM_CONTENT_AUDIT_REPORT(s,p):
         """直播间内容审核结果"""
         d=p["data"]
-        s.pct("直播","内容审核报告:",d["audit_reason"])
+        s.pct("直播","标题:",d["audit_title"],"审核结果:",d["audit_reason"])
     def l_SYS_MSG(s,p):
         """系统消息"""
-        pct("系统消息",p["msg"])
+        s.pct("系统消息",p["msg"])
     def l_PLAY_TAG(s,p):
         """直播进度条节点标签"""
         d=p["data"]
