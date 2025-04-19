@@ -6,11 +6,10 @@
 可选值: "all", "color"
 """
 
-import sys
-import blm
+import sys,time
+import blw,blm
 import all_cmd_handle
 import color_cmd_handle
-from blw import GetDataError,WSClientError
 
 class S(blm.BiliLiveMsg):
     """特化启动逻辑"""
@@ -31,7 +30,7 @@ class S(blm.BiliLiveMsg):
             self.get_uid()
         try:
             ri=self.get_room_init()
-        except GetDataError as e:
+        except blw.GetDataError as e:
             self.p(str(e))
             sys.exit(1)
         self.p("直播间:",ri["room_id"],""if ri["short_id"]==0 else f"({ri['short_id']})")
@@ -60,7 +59,7 @@ class S(blm.BiliLiveMsg):
             self.print_playurl()
         try:
             info=self.get_ws_info()
-        except GetDataError as e:
+        except blw.GetDataError as e:
             self.p(str(e))
             sys.exit(1)
         except KeyboardInterrupt:
@@ -69,11 +68,12 @@ class S(blm.BiliLiveMsg):
         self.p("启动客户端…")
         try:
             self.run_blw_client(info["wss_host"],info["token"])
-        except WSClientError as e:
+        except blw.WSClientError as e:
             self.p(str(e))
             sys.exit(1)
         except KeyboardInterrupt:
             self.p("关闭")
+            self.print_cmd_count()
             sys.exit(0)
 
 class StartAllCmdHandle(all_cmd_handle.BiliLiveAllCmdHandle,S):

@@ -30,7 +30,7 @@ def add_no_cmd_args(cmd_args:list[dict],cmd_name_list:dict[str,str],help:Any=Non
         })
     return cmd_args
 
-def read_text_continue_h(path:str):
+def read_text_continue_h(path:str)->str:
     """读取文件，并在读取过程中忽略#开头的文本"""
     i=0
     with open(path,"rt")as f:
@@ -44,6 +44,18 @@ def read_text_continue_h(path:str):
             i+=1
             if i>65535:
                 return "条目过多"
+
+def split_kv_cookie(data:str)->dict[str,str]:
+    """分割键值对的cookie信息
+    格式类似为 “key1=value1;key=value2” 的cookie文本
+    常见于 WebAPI document.cookie 和 Cookie 请求头
+    若输入的数据格式错误可能会导致出现赋值异常
+    """
+    d={}
+    for i in data.split(";"):
+        k,v=i.strip().split("=",1)
+        d[k]=v
+    return d
 
 class BiliLiveExp(blw.BiliLiveWS):
     """哔哩哔哩直播信息流一般基本扩展"""
