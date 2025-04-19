@@ -258,4 +258,5 @@ class BiliLiveMsg(BiliLiveExp):
             sys.exit(1)
         except KeyboardInterrupt:
             self.p("关闭")
+            self.print_cmd_count()
             sys.exit(0)

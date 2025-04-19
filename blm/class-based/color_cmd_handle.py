@@ -380,6 +380,10 @@ class RareCmdHandle(BLMColor):
         "OTHER_SLICE_LOADING_RESULT":"直播切片数据加载结果",
     })
 
+    only_count_cmd=[
+        "HOT_ROOM_NOTIFY",
+    ]
+
     clr_dm_inter_task:asyncio.Task=None
     """清除已过期的交互合并任务"""
     dm_inter_list:dict[int,dict[str,int]]={}
@@ -809,3 +813,5 @@ class AllCmdHandle(CoreCmdHandle,FrequentCmdHandle,RareCmdHandle,PKCmdHandle):
     """该模块全部cmd的集合"""
 
     cmd_args= CoreCmdHandle.cmd_args + FrequentCmdHandle.cmd_args + RareCmdHandle.cmd_args + PKCmdHandle.cmd_args
+
+    only_count_cmd= RareCmdHandle.only_count_cmd
