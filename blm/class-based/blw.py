@@ -609,6 +609,8 @@ class BiliLiveWS:
             self.pack_count[cmd]+=1
     def print_cmd_count(self)->dict[str,int]:
         """打印数据包计数"""
+        if not self.args.print_pack_count:
+            return
         self.p("数据包cmd计数结果:")
         if len(self.pack_count)==0:
             self.p("无内容")

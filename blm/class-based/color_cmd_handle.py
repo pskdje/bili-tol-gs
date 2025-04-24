@@ -458,6 +458,27 @@ class RareCmdHandle(BLMColor):
     def l_ROOM_SKIN_MSG(s,p):
         """直播间皮肤更新"""
         s.pct("信息","直播间皮肤更新",f"{TKEY}id: {TSTR}{d['skin_id']}{CD} ,{TKEY}status: {TSTR}{d['status']}{CD}",",结束时间:",time.strftime(TIMEFORMAT,time.gmtime(d["end_time"])),",当前时间:",time.strftime(TIMEFORMAT,time.gmtime(d["current_time"])))
+    def l_MESSAGEBOX_USER_GAIN_MEDAL(s,p):
+        """获得粉丝勋章"""
+        d=p["data"]
+        s.pct("提示",f"{TUSR}{d['fan_name']}{CD} 获得粉丝勋章")
+        s.pct("提示",f"提示标题: {d['msg_title']}")
+        s.pct("提示",f"提示内容: {d['msg_content']}")
+    def l_MESSAGEBOX_USER_MEDAL_CHANGE(s,p):
+        """粉丝勋章更新"""
+        d=p["data"]
+        s.pct("提示",d["upper_bound_content"])
+    def l_VOICE_JOIN_SWITCH(s,p):
+        """连麦开关状态"""
+        a=p["data"]["room_status"]
+        if a==0:
+            t="关闭"
+        elif a==1:
+            t="开启"
+        else:
+            s.pct("连麦",f"未知的连麦开关状态 {TNUM}{a}{CD}")
+            raise SavePack("连麦开关状态")
+        s.pct("连麦",f"连麦开关状态: {t}")
     def l_LIVE_MULTI_VIEW_CHANGE(s,p):
         """多个直播视角信息更新"""
         if s.args.no_LIVE_MULTI_VIEW_CHANGE:return

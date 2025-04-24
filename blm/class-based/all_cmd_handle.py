@@ -120,6 +120,17 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         """弹框提示"""
         d=p["data"]
         s.pct("弹框",d["msg"])
+    def l_VOICE_JOIN_SWITCH(s,p):
+        """连麦开关状态"""
+        a=p["data"]["room_status"]
+        if a==0:
+            t="关闭"
+        elif a==1:
+            t="开启"
+        else:
+            s.pct("连麦",f"未知的连麦开关状态 {a}")
+            raise SavePack("连麦开关状态")
+        s.pct("连麦",f"连麦开关状态: {t}")
     def l_VOICE_JOIN_LIST(s,p):
         """连麦列表(需要更新)"""
         d=p["data"]
@@ -328,6 +339,16 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
     def l_PK_BATTLE_VIDEO_PUNISH_END(s,p):
         """同上，少了data部分"""
         s.pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    def l_MESSAGEBOX_USER_GAIN_MEDAL(s,p):
+        """获得粉丝勋章"""
+        d=p["data"]
+        s.pct("提示",f"{d['fan_name']} 获得粉丝勋章")
+        s.pct("提示",f"提示标题: {d['msg_title']}")
+        s.pct("提示",f"提示内容: {d['msg_content']}")
+    def l_MESSAGEBOX_USER_MEDAL_CHANGE(s,p):
+        """粉丝勋章更新"""
+        d=p["data"]
+        s.pct("提示",d["upper_bound_content"])
     def l_RECOMMEND_CARD(s,p):
         """推荐卡片"""
         d=p["data"]
@@ -458,6 +479,10 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         """直播进度条节点标签"""
         d=p["data"]
         s.pct("直播","进度条标签",f"id:{d['tag_id']} 时间戳:{d['timestamp']} 类型: {d['type']}")
+    def l_PLAYTOGETHER_ICON_CHANGE(s,p):
+        """(未知)一起玩图标更新"""
+        d=p["data"]
+        s.pct("状态","一起玩图标","分区",d["area_id"],"has_perm:",d["has_perm"],"show_count:",d["show_count"])
     def l_CHG_RANK_REFRESH(s,p):
         """(未知)可能是刷新排行榜"""
         pass
