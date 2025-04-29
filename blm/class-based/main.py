@@ -11,8 +11,9 @@ import blw,blm
 import all_cmd_handle
 import color_cmd_handle
 
-class S(blm.BiliLiveMsg):
+class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
     """特化启动逻辑"""
+    add_args= blm.BiliLiveSaveExp.add_args + blm.BiliLiveMsg.add_args
     def start(self)->None:
         """带信息启动"""
         blm.log.info("使用项目启动函数开始运行")
@@ -82,7 +83,7 @@ class StartAllCmdHandle(all_cmd_handle.BiliLiveAllCmdHandle,S):
 class StartColorCmdHandle(color_cmd_handle.AllCmdHandle,S):
     """启动color"""
 
-    add_args= blm.BiliLiveMsg.add_args + color_cmd_handle.AllCmdHandle.add_args
+    add_args= S.add_args + color_cmd_handle.AllCmdHandle.add_args
 
 if __name__=="__main__":
     try:

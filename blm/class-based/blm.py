@@ -9,8 +9,11 @@ from typing import Any
 __all__=[
     "add_no_cmd_args",
     "read_text_continue_h",
+    "split_kv_cookie",
+    "SaveToFile",
     "BiliLiveExp",
     "BiliLiveBlackWordExp",
+    "BiliLiveSaveExp",
     "BiliLiveMsg",
 ]
 
@@ -56,6 +59,50 @@ def split_kv_cookie(data:str)->dict[str,str]:
         k,v=i.strip().split("=",1)
         d[k]=v
     return d
+
+class SaveToFile:
+    """保存到文件，用于在print之类直接写入到文件的地方对写入的内容做点处理"""
+
+    def __init__(self,path:str)->None:
+        """初始化"""
+        self.file=open(path,"at",encoding=blw.ENCODING,errors="xmlcharrefreplace")
+        self.temp=""
+    def __del__(self)->None:
+        """删除时关闭文件"""
+        self.close()
+    def __enter__(self)->"self":
+        """返回自身给上下文管理器"""
+        return self
+    def __exit__(self,exc_type,exc_val,exc_tb)->bool:
+        """上下文管理器退出时关闭文件"""
+        self.close()
+        return False
+
+    def close(self)->None:
+        """关闭关联的文件"""
+        self.file.close()
+        self.temp=""
+    @property
+    def closed(self)->bool:
+        """获取关联文件的关闭状态"""
+        return self.file.closed
+    def flush(self)->None:
+        """刷新关联文件的写入缓冲区"""
+        return self.file.flush()
+
+    def format(self,data:str)->str:
+        """处理字符串，默认直接返回"""
+        return data
+    def write(self,data:str)->int:
+        """写入文件，调用format处理字符串"""
+        self.temp+=data
+        if (not self.temp.endswith(("\r","\n")))and len(self.temp)<8192:
+            return len(data)
+        d=self.format(self.temp)
+        self.temp=""
+        if isinstance(d,str):
+            return self.file.write(d)
+        return 0
 
 class BiliLiveExp(blw.BiliLiveWS):
     """哔哩哔哩直播信息流一般基本扩展"""
@@ -185,6 +232,19 @@ class BiliLiveBlackWordExp(BiliLiveExp):
     def brs(self)->list[re.Pattern]:
         """返回屏蔽规则列表"""
         return self.args.blocking_rules
+
+class BiliLiveSaveExp(BiliLiveExp):
+    """保存打印内容"""
+
+    add_args=[
+        {"name":"save-to-file","help":"保存打印内容到文件","type":SaveToFile,"metavar":"PATH"},
+    ]
+
+    def p(self,*t:Any)->None:
+        """输出文本"""
+        print(*t)
+        if self.args.save_to_file:
+            print(*t,file=self.args.save_to_file)
 
 class BiliLiveMsg(BiliLiveExp):
     """启用"""
