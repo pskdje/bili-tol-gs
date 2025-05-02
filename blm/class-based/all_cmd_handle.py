@@ -35,6 +35,10 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         """进场"""
         d=p["data"]
         s.pct("进场",d["copy_writing"])
+    def l_ENTRY_EFFECT_MUST_RECEIVE(s,p):
+        """必须接受的进场信息"""
+        d=p["data"]
+        s.pct("进场","(必须显示)",d["copy_writing"])
     def l_SEND_GIFT(s,p):
         """礼物"""
         d=p["data"]
@@ -502,3 +506,9 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
         d=p["data"]
         for i in d["data"]:
             s.pct("事件","剪辑片段数据","开始于:",i["start_time"],",结束于:",i["end_time"],",片段视频流:",i["stream"])
+    def l_FANS_CLUB_POKE_GIFT_NOTICE(s,p):
+        """粉丝团戳一戳要礼通知"""
+        s.pct("提示",p["data"]["text"])
+    def l_master_qn_strategy_chg(s,p):
+        """某种更新"""
+        s.pct("数据包","master_qn_strategy_chg",p["data"])

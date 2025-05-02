@@ -4,7 +4,7 @@
 import blm
 import re,time,json,asyncio
 from typing import Any
-from blw import SavePack,TIMEFORMAT
+from blw import SavePack,TIMEFORMAT,log
 
 __all__=[
     "cbt","cfc","cfb",
@@ -253,6 +253,12 @@ class FrequentCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
             return
         d=p["data"]
         s.pct("进场",s.cuse(d["copy_writing"]))
+    def l_ENTRY_EFFECT_MUST_RECEIVE(s,p):
+        """必须接受的进场信息"""
+        if s.args.no_ENTRY_EFFECT:# 允许不显示
+            return
+        d=p["data"]
+        s.pct("进场",f"{C_11}(必须显示){CD}",s.cuse(d["copy_writing"]))
     def l_SEND_GIFT(s,p):
         """礼物"""
         if s.args.no_SEND_GIFT:
@@ -378,6 +384,7 @@ class RareCmdHandle(BLMColor):
         "ANCHOR_BROADCAST":"直播小助手广播",
         "ANCHOR_HELPER_DANMU":"直播小助手弹幕",
         "OTHER_SLICE_LOADING_RESULT":"直播切片数据加载结果",
+        "FANS_CLUB_POKE_GIFT_NOTICE":"粉丝团戳一戳要礼通知",
     })
 
     only_count_cmd=[
@@ -767,6 +774,10 @@ class RareCmdHandle(BLMColor):
         d=p["data"]
         for i in d["data"]:
             s.pct("事件","剪辑片段数据",f"开始于: {i['start_time']} ,结束于: {i['end_time']} ,片段视频流: {DU}{i['stream']}{DF} {TKEY}type:{TNUM}{i['type']}{CD},{TKEY}ban_ec:{TBOL}{i['ban_ec']}{CD}")
+    def l_FANS_CLUB_POKE_GIFT_NOTICE(s,p):
+        """粉丝团戳一戳要礼通知"""
+        if s.args.no_FANS_CLUB_POKE_GIFT_NOTICE:return
+        s.pct("提示",p["data"]["text"])
 
 class PKCmdHandle(BLMColor):
     """PK相关数据包"""
