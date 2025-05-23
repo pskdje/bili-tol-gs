@@ -17,6 +17,9 @@ __all__=[
     # 分类接口
     "DanmuTools",
     "LiveTools",
+    "LiveDataTools",
+    "RoomTools",
+    "LiveReplay",
     # 接口合并
     "BiliLiveTools"
 ]
@@ -232,5 +235,40 @@ class RoomTools(ToolBase):
             b["del_tag"]=del_tag
         return self.get_rest_data("更新直播间信息","https://api.live.bilibili.com/room/v1/Room/update",b)["data"]
 
-class BiliLiveTools(DanmuTools,LiveTools,LiveDataTools,RoomTools):
+class LiveReplay(ToolBase):
+    """直播回放"""
+
+    def get_replay_list(self,page:int=1,page_size:int=12)->dict:
+        """获取回放列表"""
+        return self.get_rest_data("获取直播回放列表",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorGetReplayList?page={page}&page_size={page_size}")["data"]
+    def get_video_slice_list(self,page:int=1,page_size:int=12)->dict:
+        """获取已发布片段列表"""
+        return self.get_rest_data("获取已发布片段列表",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorGetVideoSliceList?page={page}&page_size={page_size}")["data"]
+    def get_draft_list(self,page:int=1,page_size:int=12)->dict:
+        """获取草稿列表"""
+        return self.get_rest_data("获取回放剪辑草稿列表",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetDraftList?page={page}&page_size={page_size}")["data"]
+
+    def delete_slice_draft(self,draft_id:int)->dict:
+        """删除某个草稿"""
+        b=self.add_csrf({
+            "draft_id":draft_id,
+        })
+        return self.get_rest_data("删除回放剪辑草稿","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/DeleteSliceDraft",b)
+
+    def publish_video_slice(self,live_key:str,start_ts:int,end_ts:int,av_title:str,av_cover:str="https://i0.hdslb.com/bfs/live/59fc254c1f51a962dbf69ae85e4920f2f6fb8dcd.png",av_highlight:int=0,with_subtitle:int=0,with_danmaku:int=0)->dict[str,int]:
+        """发布回放片段
+        从av_title参数开始，建议使用关键字参数"""
+        b=self.add_csrf({
+            "live_key":live_key,
+            "start_ts":start_ts,
+            "end_ts":end_ts,
+            "av_title":av_title,
+            "av_cover":av_cover,
+            "av_highlight":av_highlight,
+            "with_subtitle":with_subtitle,
+            "with_danmaku":with_danmaku,
+        })
+        return self.get_rest_data("发布直播回放片段","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorPublishVideoSlice",b)["data"]
+
+class BiliLiveTools(DanmuTools,LiveTools,LiveDataTools,RoomTools,LiveReplay):
     """全部工具"""
