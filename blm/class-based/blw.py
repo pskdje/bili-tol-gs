@@ -383,7 +383,7 @@ class BiliLiveWS:
         """分割数据包时出现错误的提示信息，将传入原始字节串"""
         s.p("无法解析数据")
 
-    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
+    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,json:dict=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
         """获取API数据
         tip: 操作提示，用于生成错误和日志
         url: 请求的URL
@@ -394,11 +394,17 @@ class BiliLiveWS:
         if not isinstance(tip,str):
             raise TypeError("tip需要为str")
         rn=tip
-        log.debug(f"""[请求]{url}\nheaders: {self.headers}\ncookies: {self.cookies}\ndata: {data}""",stacklevel=2)
+        log.debug(f"""[请求]{url}\nheaders: {self.headers}\ncookies: {self.cookies}\ndata: {data}\njson: {json}""",stacklevel=2)
         try:
             if data:
                 r=requests.post(url,
                     data=data,
+                    headers=self.headers,
+                    cookies=self.cookies
+                )
+            elif json:
+                r=requests.post(url,
+                    json=json,
                     headers=self.headers,
                     cookies=self.cookies
                 )
