@@ -127,16 +127,6 @@ class BiliLiveExp(blw.BiliLiveWS):
                 top_args.append(i)
         blw.from_list_add_args(argp,top_args)
 
-    def get_login_nav(self)->dict:
-        """获取nav信息。若只需wbi信息，无需登录。"""
-        r=self.get_rest_data("获取登录nav信息","https://api.bilibili.com/x/web-interface/nav",err_code_raise=False)
-        w=r["data"]["wbi_img"]
-        img_url:str=w["img_url"]
-        sub_url:str=w["sub_url"]
-        self.wbi_imgKey:str=img_url.rsplit("/",1)[1].split(".")[0]
-        self.wbi_subKey:str=sub_url.rsplit("/",1)[1].split(".")[0]
-        return r
-
     def get_room_init(self)->dict:
         """获取直播间初始化信息，若需要主播uid或者将短号转为原始房间号必须调用"""
         d=self.get_rest_data("获取直播间初始化信息","https://api.live.bilibili.com/room/v1/Room/room_init?id="+str(self.roomid))["data"]
@@ -284,7 +274,7 @@ class BiliLiveMsg(BiliLiveExp):
         self.p("获取数据…")
         if a.sessdata:
             self.cookies["SESSDATA"]=a.sessdata
-            self.get_uid()
+        self.get_login_nav()
         try:
             ri=self.get_room_init()
         except GetDataError as e:

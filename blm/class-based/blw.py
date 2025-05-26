@@ -524,10 +524,6 @@ class BiliLiveWS:
         self.count_cmd=args.count_cmd
         return args
 
-    def create_pack(self,op:int,data:str)->bytes:
-        """创建数据包"""
-        self.sequence+=1
-        return bilipack(op,data,self.sequence)
     def get_uid(self)->int:
         """获取登录会话对应的uid
         需要提前于self.cookies字典内填入SESSDATA属性。
@@ -537,16 +533,37 @@ class BiliLiveWS:
         u=r["data"]["mid"]
         self.uid=u
         return u
+    def get_login_nav(self)->dict:
+        """获取nav信息。若只需wbi信息，无需登录。
+        因为获取信息流地址出现需要wbi签名的情况，所以给它加了设置uid变量的功能"""
+        r=self.get_rest_data("获取登录nav信息","https://api.bilibili.com/x/web-interface/nav",err_code_raise=False)
+        d=r["data"]
+        w=d["wbi_img"]
+        img_url:str=w["img_url"]
+        sub_url:str=w["sub_url"]
+        self.wbi_imgKey:str=img_url.rsplit("/",1)[1].split(".")[0]
+        self.wbi_subKey:str=sub_url.rsplit("/",1)[1].split(".")[0]
+        if d["isLogin"]==True:
+            self.uid=d["mid"]
+        return r
     def get_ws_info(self)->dict[str,str]:
         """获取信息流地址，房间号从roomid读取"""
         rn="获取信息流地址"
         log.info(f"{rn}，房间号: {self.roomid}")
-        d=self.get_rest_data(rn,"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id="+str(self.roomid))
+        q={
+            "id":self.roomid,
+        }
+        d=self.get_rest_data(rn,"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?"+self.wbi_encode(q).query)
         u=d["data"]["host_list"][0]
         return {
             "token":d["data"]["token"],
             "wss_host":f"{u['host']}:{u['wss_port']}",
         }
+
+    def create_pack(self,op:int,data:str)->bytes:
+        """创建数据包"""
+        self.sequence+=1
+        return bilipack(op,data,self.sequence)
     def join_room_pack(self,token:str="",uid:int=0)->bytes:
         """创建加入直播间数据包"""
         protover=3 if brotli else 2
@@ -759,8 +776,8 @@ class BiliLiveWS:
         self.p("获取数据…")
         if a.sessdata:
             self.cookies["SESSDATA"]=a.sessdata
-            self.get_uid()
         try:
+            self.get_login_nav()
             info=self.get_ws_info()
         except GetDataError as e:
             self.p(str(e))

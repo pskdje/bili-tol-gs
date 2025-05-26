@@ -28,7 +28,11 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
         self.p("获取数据…")
         if a.sessdata:
             self.cookies["SESSDATA"]=a.sessdata
-            self.get_uid()
+        try:
+            self.get_login_nav()
+        except blw.GetDataError as e:
+            self.p(str(e))
+            sys.exit(1)
         try:
             ri=self.get_room_init()
         except blw.GetDataError as e:
