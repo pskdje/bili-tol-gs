@@ -474,7 +474,15 @@ class RareCmdHandle(BLMColor):
     def l_MESSAGEBOX_USER_MEDAL_CHANGE(s,p):
         """粉丝勋章更新"""
         d=p["data"]
-        s.pct("提示",d["upper_bound_content"])
+        y=d["type"]
+        if y==1:
+            s.pct("提示",d["upper_bound_content"])
+        elif y==2:
+            s.pct("提示","重新点亮了勋章")
+        else:
+            z=f"未知的粉丝勋章更新类型: {y}"
+            s.pct("支持",z)
+            raise SavePack(z)
     def l_VOICE_JOIN_SWITCH(s,p):
         """连麦开关状态"""
         a=p["data"]["room_status"]

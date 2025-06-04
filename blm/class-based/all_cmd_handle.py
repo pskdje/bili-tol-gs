@@ -1,7 +1,7 @@
 """全部该项目已知cmd处理
 数据分析由我自己进行，不保证准确，请注意时效，日期:2025/02/21，操作:添加
 已存在的cmd很难确认是否需要更新
-可参考 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md 页面，我有贡献了部分信息
+可参考 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md 页面，但存在时效性。
 """
 
 import blw
@@ -352,7 +352,15 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
     def l_MESSAGEBOX_USER_MEDAL_CHANGE(s,p):
         """粉丝勋章更新"""
         d=p["data"]
-        s.pct("提示",d["upper_bound_content"])
+        y=d["type"]
+        if y==1:
+            s.pct("提示",d["upper_bound_content"])
+        elif y==2:
+            s.pct("提示","重新点亮了勋章")
+        else:
+            z=f"未知的粉丝勋章更新类型: {y}"
+            s.pct("支持",z)
+            raise SavePack(z)
     def l_RECOMMEND_CARD(s,p):
         """推荐卡片"""
         d=p["data"]
