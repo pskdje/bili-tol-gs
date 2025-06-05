@@ -116,7 +116,7 @@ class DanmuTools(ToolBase):
         """发送弹幕失败，传入错误对象"""
 
     # 发送弹幕
-    def send_danmu(self,msg:str)->dict:
+    def send_danmu(self,msg:str,reply_mid:int=0,replay_dmid:str="")->dict:
         """发送弹幕"""
         r=self.get_rest_data("发送弹幕","https://api.live.bilibili.com/msg/send",self.add_csrf({
             "roomid":self.roomid,
@@ -125,9 +125,11 @@ class DanmuTools(ToolBase):
             "fontsize":25,
             "color":16777215,
             "mode":1,
+            "reply_mid":reply_mid,
+            "replay_dmid":replay_dmid,
         }))
         return json.loads(r["data"]["mode_info"]["extra"])
-    async def send_msg_and_restrict(self,msg:str,rate_limit:bool=True)->None|str:
+    async def send_msg_and_restrict(self,msg:str,rate_limit:bool=True,*an:Any,**ad:Any)->None|str:
         """发送弹幕并进行一些限制
         将限制发送速率并视消息长度进行分割"""
         m=str(msg)
@@ -142,7 +144,7 @@ class DanmuTools(ToolBase):
             self.on_send_danmu_start(msg)
             while idx<ml:
                 try:
-                    r=self.send_danmu(m[idx:idx+block])
+                    r=self.send_danmu(m[idx:idx+block],*an,**ad)
                 except GetDataError as e:
                     log.debug(f"发送弹幕失败: {e}")
                     self.erron_send_danmu(e)
@@ -181,6 +183,10 @@ class DanmuTools(ToolBase):
         if mode is not None:
             d["mode"]=mode
         return self.get_rest_data("设置弹幕配置","https://api.live.bilibili.com/xlive/web-room/v1/dM/AjaxSetConfig",data=d)
+
+    def get_dm_history(self)->dict:
+        """获取历史弹幕"""
+        return self.get_rest_data("获取历史弹幕",f"https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory?roomid={self.roomid}")
 
 class LiveTools(ToolBase):
     """开关播"""
