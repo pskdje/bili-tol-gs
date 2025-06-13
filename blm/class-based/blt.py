@@ -137,6 +137,7 @@ class DanmuTools(ToolBase):
         idx=0
         block=30
         if self.send_danmu_time+5>time.time()and rate_limit:
+            log.debug(f"触发弹幕发送速率限制，丢弃消息。消息内容: {repr(m)}")
             return "发送速率限制，丢弃消息"
         self.send_danmu_time=time.time()
         log.debug(f"""准备发送弹幕: {repr(m)} ,长度: {ml}{' 预计进行分割发送'if ml>block else ''}""")
@@ -191,7 +192,7 @@ class DanmuTools(ToolBase):
 class LiveTools(ToolBase):
     """开关播"""
 
-    def startLive(self,area:int,platform:str="web_link")->LiveLink:
+    def startLive(self,area:int,platform:str="pc_link",*,return_type:str="LiveLink")->LiveLink|dict:
         """开始直播"""
         b=self.add_csrf({
             "room_id":self.roomid,
@@ -201,6 +202,11 @@ class LiveTools(ToolBase):
         r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",b)
         d=r["data"]
         self.live_key=d["live_key"]
+        rt=return_type
+        if rt=="raw":
+            return r
+        elif rt=="data":
+            return d
         return LiveLink(d["rtmp"]["addr"],d["rtmp"]["code"])
     def stopLive(self)->dict:
         """停止直播"""
@@ -240,6 +246,19 @@ class RoomTools(ToolBase):
         if del_tag is not None:
             b["del_tag"]=del_tag
         return self.get_rest_data("更新直播间信息","https://api.live.bilibili.com/room/v1/Room/update",b)["data"]
+
+    def updatePreLiveInfo(self,cover:str=None,title:str=None,*,platform:str="web")->dict:
+        """预更新直播信息"""
+        b=self.add_csrf({
+            "platform":platform,
+            "mobi_app":platform,
+            "build":1,
+        })
+        if cover is not None:
+            b["cover"]=cover
+        if title is not None:
+            b["title"]=title
+        return self.get_rest_data("预更新直播信息","https://api.live.bilibili.com/xlive/app-blink/v1/preLive/UpdatePreLiveInfo",b)["data"]
 
 class LiveReplay(ToolBase):
     """直播回放"""
