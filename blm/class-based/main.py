@@ -26,8 +26,8 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
             ma=[]
         a=self.pararg(ma)
         self.p("获取数据…")
-        if a.sessdata:
-            self.cookies["SESSDATA"]=a.sessdata
+        if a.cookie:
+            self.cookies|=a.cookie
         try:
             self.get_login_nav()
         except blw.GetDataError as e:

@@ -5,10 +5,13 @@
 import blw,blm
 import time,json,asyncio
 from pathlib import Path
-from typing import NamedTuple,Any
+from typing import NamedTuple,Any,Self
 from blw import GetDataError,log
 
 __all__=[
+    # 常量
+    "DEFAULT_APPkey",
+    "DEFAULT_APPsec",
     # 数据类
     "DMColor",
     "LiveLink",
@@ -23,6 +26,46 @@ __all__=[
     # 接口合并
     "BiliLiveTools"
 ]
+
+DEFAULT_APPkey="1d8b6e7d45233436"
+DEFAULT_APPsec="560c52ccd288fed045859ed18bffd973"
+
+class APPSign:
+    """APP签名返回"""
+    def __init__(self,query,signed_params,sign):
+        """记录"""
+        self.query=query # 查询参数
+        self.signed_params=signed_params # 查询字典
+        self.sign=sign # 签名字符串
+    def __str__(self):
+        """返回签名结果字符串"""
+        return self.query
+    def __repr__(self):
+        """返回构造表达式"""
+        return f"APPSign({repr(self.query)}, {repr(self.signed_params)}, {repr(self.sign)})"
+
+    @staticmethod
+    def sign(params:dict,appkey:str=DEFAULT_APPkey,appsec:str=DEFAULT_APPsec)->Self:
+        """签名"""
+        return appsign(params,appkey,appsec)
+
+def appsign(params:dict,appkey:str,appsec:str)->APPSign:
+    """APP签名
+    代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/APP.md
+    """# 这玩意也不想自己写
+    from urllib.parse import urlencode
+    from hashlib import md5
+    pr=params.copy()
+    pr.update({"appkey":appkey})
+    pr=dict(sorted(pr.items()))
+    qu=urlencode(pr)
+    sign=md5((qu+appsec).encode()).hexdigest()
+    pr["sign"]=sign
+    return APPSign(
+        urlencode(pr),
+        pr,
+        sign
+    )
 
 class DMColor:
     """弹幕颜色"""
@@ -62,7 +105,7 @@ class ToolBase(blm.BiliLiveExp):
 
     def split_kv_cookie(self,data:str)->dict[str,str]:
         """从字符串获取cookie"""
-        return self.set_cookie(blm.split_kv_cookie(data))
+        return self.set_cookie(blw.split_kv_cookie(data))
     def split_cookietxt(self,data:str)->dict[str,str]:
         """处理cookie.txt格式的数据"""
         c={}
@@ -92,14 +135,21 @@ class ToolBase(blm.BiliLiveExp):
         else:
             return self.split_kv_cookie(d)
 
-    add_args=[
-        {"name":"cookie","help":"使用cookie","type":str},
-    ]
+    appkey=DEFAULT_APPkey
+    appsec=DEFAULT_APPsec
 
     def add_csrf(self,odic:dict[str,str])->dict:
         """为dict添加csrf"""
         odic["csrf"]=self.cookies["bili_jct"]
         return odic
+
+    def appsign(self,params:dict,appkey:str=None,appsec:str=None)->dict:
+        """APP签名，与对应的全局函数不同，返回值为已签名的字典。"""
+        if appkey is None:
+            appkey=self.appkey
+        if appsec is None:
+            appsec=self.appsec
+        return appsign(params,appkey,appsec).signed_params
 
 class DanmuTools(ToolBase):
     """弹幕"""
@@ -199,6 +249,8 @@ class LiveTools(ToolBase):
             "area_v2":area,
             "platform":platform,
         })
+        if platform!="pc_link":
+            b=self.appsign(b)
         r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",b)
         d=r["data"]
         self.live_key=d["live_key"]
@@ -208,11 +260,11 @@ class LiveTools(ToolBase):
         elif rt=="data":
             return d
         return LiveLink(d["rtmp"]["addr"],d["rtmp"]["code"])
-    def stopLive(self)->dict:
+    def stopLive(self,platform:str="pc_link")->dict:
         """停止直播"""
         b=self.add_csrf({
             "room_id":self.roomid,
-            #"platform":"web_link",
+            "platform":platform,
         })
         r=self.get_rest_data("停止直播","https://api.live.bilibili.com/room/v1/Room/stopLive",b)
         return r["data"]

@@ -9,7 +9,6 @@ from typing import Any
 __all__=[
     "add_no_cmd_args",
     "read_text_continue_h",
-    "split_kv_cookie",
     "SaveToFile",
     "BiliLiveExp",
     "BiliLiveBlackWordExp",
@@ -47,18 +46,6 @@ def read_text_continue_h(path:str)->str:
             i+=1
             if i>65535:
                 return "条目过多"
-
-def split_kv_cookie(data:str)->dict[str,str]:
-    """分割键值对的cookie信息
-    格式类似为 “key1=value1;key=value2” 的cookie文本
-    常见于 WebAPI document.cookie 和 Cookie 请求头
-    若输入的数据格式错误可能会导致出现赋值异常
-    """
-    d={}
-    for i in data.split(";"):
-        k,v=i.strip().split("=",1)
-        d[k]=v
-    return d
 
 class SaveToFile:
     """保存到文件，用于在print之类直接写入到文件的地方对写入的内容做点处理"""
@@ -272,8 +259,8 @@ class BiliLiveMsg(BiliLiveExp):
         log.debug(f"版本信息: {blw.VERSIONINFO}")
         a=self.pararg()
         self.p("获取数据…")
-        if a.sessdata:
-            self.cookies["SESSDATA"]=a.sessdata
+        if a.cookie:
+            self.cookies.update(a.cookie)
         self.get_login_nav()
         try:
             ri=self.get_room_init()

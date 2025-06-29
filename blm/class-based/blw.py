@@ -34,6 +34,7 @@ __all__:list[str]=[
     "bst",
     "res_log",
     "from_list_add_args",
+    "split_kv_cookie",
     "bilipack",
     "savepack",
     "wbi_getMixinKey",
@@ -203,6 +204,18 @@ def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[dict]|tuple[
         log.debug(str(argobj.add_argument(arin,**aro)))
         add_args.append(arin)
     return add_args
+
+def split_kv_cookie(data:str)->dict[str,str]:
+    """分割键值对的cookie信息
+    格式类似为 “key1=value1;key=value2” 的cookie文本
+    常见于 WebAPI document.cookie 和 Cookie 请求头
+    若输入的数据格式错误可能会导致出现赋值异常
+    """
+    d={}
+    for i in data.split(";"):
+        k,v=i.strip().split("=",1)
+        d[k]=v
+    return d
 
 def bilipack(op:int,data:str,seq:int=0)->bytes:
     """返回要发送的数据包
@@ -453,29 +466,32 @@ class BiliLiveWS:
         warnings.warn("不建议通过调用类的from_list_add_args方法，请改为调用blw对应名称的函数",category=PendingDeprecationWarning)
         return from_list_add_args(argobj,arg_list)
 
-    def get_SESSDATA(self,s:str)->str|None:
-        """获取登录会话数据"""
-        rs=re.compile(r"(?:^|.*;\s*)SESSDATA\s*\=\s*([^;]*).*$")
+    def get_Cookie(self,s:str)->str|None:
+        """获取Cookie数据"""
+        if hasattr(self,"read_cookie"):
+            return self.read_cookie(s)
         p=Path(s)
+        c={}
         if p.is_file():
             if p.stat().st_size>65536:
                 raise ValueError("文件过大")
             fts=p.read_text().splitlines()
             for ft in fts:
-                rst=rs.search(ft)# 支持使用Cookie头内容或之类的数据
-                if(rst):
-                    return rst[1]
                 ftt=ft.split("\t")
                 if len(fts)==1 and len(ftt)==1:
-                    return ftt[0]# 如果只有1行且分割后只有1个数据,直接返回这个数据,否则试着按照cookie.txt解析数据
-                if ftt[0]!=".bilibili.com"or ftt[-2]!="SESSDATA":
+                    c.update(split_kv_cookie(ftt[0]))
+                    break
+                if ftt[0]!=".bilibili.com":
                     continue
-                return ftt[-1]
+                c[ftt[-2]]=ftt[-1]
             if not len(fts):
                 raise ValueError("这个文件没有内容")
-            self.p("[警告] 未找到SESSDATA")
-            return None
-        return s
+            if not len(c):
+                self.p("[警告] 无Cookie数据")
+                return None
+        else:
+            c.update(split_kv_cookie(s))
+        return c
     def build_argparser(self,
         desc:str="哔哩哔哩直播信息流处理\n允许使用@来引入参数文件",
         epil:str=""
@@ -494,7 +510,7 @@ class BiliLiveWS:
         )
         parser.add_argument("roomid",help="直播间ID",type=int,default=23058)
         parser.add_argument("-d","--debug",help="开启调试模式",action="store_true")
-        parser.add_argument("--sessdata",help="使用登录会话标识",type=self.get_SESSDATA,metavar="SESSDATA|FILE")
+        parser.add_argument("--cookie",help="使用Cookie登录",type=self.get_Cookie,metavar="Cookie|FILE")
         parser.add_argument("--no-print-enable",help="不打印不支持的信息",action="store_true")
         parser.add_argument("--pack-error-no-exit",help="数据包处理异常时不退出",action="store_false")
         dbg=parser.add_argument_group("调试功能")
@@ -774,8 +790,8 @@ class BiliLiveWS:
         log.debug(f"版本信息: {VERSIONINFO}")
         a=self.pararg()
         self.p("获取数据…")
-        if a.sessdata:
-            self.cookies["SESSDATA"]=a.sessdata
+        if a.cookie:
+            self.cookies.update(a.cookie)
         try:
             self.get_login_nav()
             info=self.get_ws_info()
