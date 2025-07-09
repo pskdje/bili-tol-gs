@@ -5,6 +5,7 @@ import blm
 import re,time,json,asyncio
 from typing import Any
 from blw import SavePack,TIMEFORMAT,bst,log
+from cmd_pb.protobuf_cmd_handle import ParseProtobufPack
 
 __all__=[
     "cbt","cfc","cfb",
@@ -318,7 +319,7 @@ class FrequentCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
             olc=f"在线计数: {TNUM}{d['online_count']}{CD}"
         s.pct("计数",f"高能用户计数: {TNUM}{d['count']}{CD}",olc)
     def l_ONLINE_RANK_V2(s,p):
-        """排行"""
+        """在线排行"""
         if s.args.no_ONLINE_RANK_V2:
             return
         d=p["data"]
@@ -849,9 +850,20 @@ class PKCmdHandle(BLMColor):
         """同上，少了data部分"""
         s.pct("PK","惩罚时间结束",s.pk_id_status(p))
 
-class AllCmdHandle(CoreCmdHandle,FrequentCmdHandle,RareCmdHandle,PKCmdHandle):
+class ModuleAllCmdHandle(CoreCmdHandle,FrequentCmdHandle,RareCmdHandle,PKCmdHandle):
     """该模块全部cmd的集合"""
 
     cmd_args= CoreCmdHandle.cmd_args + FrequentCmdHandle.cmd_args + RareCmdHandle.cmd_args + PKCmdHandle.cmd_args
 
     only_count_cmd= RareCmdHandle.only_count_cmd
+
+class AllCmdHandle(ModuleAllCmdHandle,ParseProtobufPack):
+    """添加protobuf处理"""
+
+    def l_INTERACT_WORD_V2(s,p):
+        """进入直播间V2,protobuf"""
+        s.dc_INTERACT_WORD_V2(p)
+        s.l_INTERACT_WORD(p)
+    def l_ONLINE_RANK_V3(s,p):
+        """在线排行V3,protobuf"""
+        s.pct("支持","ONLINE_RANK_V3的proto文件缺失，无法解析")

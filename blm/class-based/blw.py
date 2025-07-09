@@ -28,6 +28,7 @@ __all__:list[str]=[
     "VERSIONINFO",
     "LOGDIRPATH",
     "ENCODING",
+    "wbi_mixinKeyEncTab",
     # 函数
     "error",
     "pr",
@@ -48,9 +49,10 @@ __all__:list[str]=[
     # 类
     "Proto",
     "ArgsParser",
+    "MsgWSInfo",
     "BiliLiveWS",
 ]
-__version__:str="1"
+__version__:str="2"
 DEBUG:bool=False
 TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
 UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
@@ -318,6 +320,34 @@ class ArgsParser(argparse.ArgumentParser):
             return lco[0].split()
         return [arg_line]
 
+class MsgWSInfo:
+    """直播信息流的地址信息容纳"""
+
+    def __init__(self,token:str,wss_host:str=None,
+        *,data:dict=None,other:Any=None
+    ):
+        """初始化"""
+        self.data=data # 原始响应(可选)
+        self.other=other # 其它信息(可选)
+        self.token=token
+        self.wss_host=wss_host
+
+    def __repr__(self)->str:
+        """返回token信息"""
+        return f"<{self.__class__.__name__} token: '{self.token}'>"
+
+    def __getitem__(self,key:str)->Any:
+        """获取实例的属性，用于向下兼容"""
+        if hasattr(self,key):
+            return getattr(self,key)
+        raise KeyError(key)
+    def __setitem__(self,key:str,value:Any)->NoReturn:
+        """设置实例的属性，用于向下兼容"""
+        setattr(self,key,value)
+    def __contains__(self,item:str)->bool:
+        """实现in操作符"""
+        return hasattr(self,item)
+
 class BiliLiveWS:
     """哔哩哔哩直播信息流主程序框架"""
 
@@ -370,6 +400,7 @@ class BiliLiveWS:
             "UA":self.UA,
             "sequence":self.sequence,
             "roomid":self.roomid,
+            "uid":self.uid,
             "hpst":self.hpst,
             "args":self.args,
             "pack_count":self.pack_count,
@@ -383,12 +414,21 @@ class BiliLiveWS:
 
     # 事件，主要在主程序中显示提示
     def on_conn_ws_server(s)->None:
+        """服务器连接开始"""
         s.p("连接服务器…")
     def on_conn_ws_server_ok(s)->None:
+        """服务器连接完成"""
         s.p("服务器已连接")
+    def on_live_msg_init_ok(s)->None:
+        """信息流初始化信息发送完成"""
+    def on_cert_pack_reply(s,p:bytes)->None:
+        """认证包回复，传入数据包内容"""
+        s.pct("认证",p)
     def on_no_packlist(s)->None:
+        """数据包处理没有信息"""
         s.p("数据包处理函数未收到数据包列表")
     def on_no_support_cmd_tip(s,cmd:str)->None:
+        """不支持某个cmd的提示"""
         s.pct("支持",f"不支持'{cmd}'命令")
 
     # 错误事件，可自定义提示信息
@@ -396,35 +436,39 @@ class BiliLiveWS:
         """分割数据包时出现错误的提示信息，将传入原始字节串"""
         s.p("无法解析数据")
 
-    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,json:dict=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
+    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,json:dict|list=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
         """获取API数据
+        任意发送数据参数不为None时将使用POST请求
         tip: 操作提示，用于生成错误和日志
         url: 请求的URL
-        data: 要发送的数据，不为None时将使用POST方法请求
+        data: 要发送的数据，类型urlencode或其它（需自定义请求头的内容类型）
+        json: 要发送的数据，类型JSON
         err_code_raise: 若为真值，响应内容的code不为0时将抛出错误
         返回值: 经过json解析后的响应内容
         """
         if not isinstance(tip,str):
             raise TypeError("tip需要为str")
         rn=tip
-        log.debug(f"""[请求]{url}\nheaders: {self.headers}\ncookies: {self.cookies}\ndata: {data}\njson: {json}""",stacklevel=2)
+        headers=self.headers
+        cookies=self.cookies
+        log.debug(f"""[请求]{url}\nheaders: {headers}\ncookies: {cookies}\ndata: {data}\njson: {json}""",stacklevel=2)
         try:
             if data:
                 r=requests.post(url,
                     data=data,
-                    headers=self.headers,
-                    cookies=self.cookies
+                    headers=headers,
+                    cookies=cookies
                 )
             elif json:
                 r=requests.post(url,
                     json=json,
-                    headers=self.headers,
-                    cookies=self.cookies
+                    headers=headers,
+                    cookies=cookies
                 )
             else:
                 r=requests.get(url,
-                    headers=self.headers,
-                    cookies=self.cookies
+                    headers=headers,
+                    cookies=cookies
                 )
         except KeyboardInterrupt:
             log.info(f"{rn}操作被中断")
@@ -562,8 +606,9 @@ class BiliLiveWS:
         if d["isLogin"]==True:
             self.uid=d["mid"]
         return r
-    def get_ws_info(self)->dict[str,str]:
-        """获取信息流地址，房间号从roomid读取"""
+    def get_ws_info(self)->MsgWSInfo:
+        """获取信息流地址，房间号从roomid读取
+        子类的实现应返回MsgWSInfo类"""
         rn="获取信息流地址"
         log.info(f"{rn}，房间号: {self.roomid}")
         q={
@@ -571,10 +616,7 @@ class BiliLiveWS:
         }
         d=self.get_rest_data(rn,"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?"+self.wbi_encode(q).query)
         u=d["data"]["host_list"][0]
-        return {
-            "token":d["data"]["token"],
-            "wss_host":f"{u['host']}:{u['wss_port']}",
-        }
+        return MsgWSInfo(d["data"]["token"],wss_host=f"{u['host']}:{u['wss_port']}")
 
     def create_pack(self,op:int,data:str)->bytes:
         """创建数据包"""
@@ -716,6 +758,7 @@ class BiliLiveWS:
             await ws.send(jrp)
             del jrp
             self.hpst=asyncio.create_task(self.loop_send_hp(ws),name="重复发送心跳包")
+            self.on_live_msg_init_ok()
             async for msg in ws:
                 p=Proto.unpack(msg)
                 if p[2]==1 and p[3]==3:
@@ -723,7 +766,7 @@ class BiliLiveWS:
                     log.debug(f"处理后人气值: {rq}, 原始数据: {p[5]}")
                 elif p[2]==1 and p[3]==8:
                     log.debug(f"认证回复: {p[5]}")
-                    self.pct("认证",p[5])
+                    self.on_cert_pack_reply(p[5])
                 elif p[3]==5 and (p[2]==0 or p[2]==1):
                     self.for_packlist(
                         self.split_datapack(msg)
@@ -792,6 +835,8 @@ class BiliLiveWS:
         self.p("获取数据…")
         if a.cookie:
             self.cookies.update(a.cookie)
+        if "buvid3" not in self.cookies:
+            self.p("[警告]未提供键为buvid3的Cookie，可能会被风控。")
         try:
             self.get_login_nav()
             info=self.get_ws_info()
@@ -803,7 +848,7 @@ class BiliLiveWS:
             sys.exit(0)
         self.p("启动客户端…")
         try:
-            self.run_blw_client(info["wss_host"],info["token"])
+            self.run_blw_client(info.wss_host,info.token)
         except WSClientError as e:
             self.p(str(e))
             sys.exit(1)

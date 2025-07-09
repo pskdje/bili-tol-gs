@@ -14,6 +14,20 @@
 
 **不能保证已存在的信息能及时更新**
 
+## 依赖
+
+### 必须
+
+`requests`: 网络请求
+
+`websockets`: WS库
+
+`protobuf`: protobuf数据解析，部分数据包强制需要
+
+### 可选
+
+`brotli`: 数据解压
+
 ## 文件夹/文件
 
 ### [process-based/]
