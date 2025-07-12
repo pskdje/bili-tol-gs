@@ -7,18 +7,19 @@
 import blw
 import json
 from blw import TIMEFORMAT,SavePack,log
+from cmd_pb.protobuf_cmd_handle import ParseProtobufPack
 
-class BiliLiveAllCmdHandle(blw.BiliLiveWS):
+class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
     """所有该项目已知cmd处理"""
     def l_DANMU_MSG(self,p):
         """弹幕"""
         d=p["info"]
         self.pct("弹幕",f"{d[2][1]}:",d[1])
     def l_INTERACT_WORD(s,p):
-        """交互"""
+        """交互,JSON"""
         info="交互"
         d=p["data"]
-        mt=d["msg_type"]
+        mt=int(d["msg_type"])
         nm=d["uname"]
         if mt==1:
             s.pct(info,nm,"进入直播间")
@@ -32,6 +33,10 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
             if not s.args.no_print_enable:
                 pct("支持",t)
             raise SavePack("未知的交互类型")
+    def l_INTERACT_WORD_V2(s,p):
+        """交互V2,protobuf"""
+        s.dc_INTERACT_WORD_V2(p)
+        s.l_INTERACT_WORD(p)
     def l_ENTRY_EFFECT(s,p):
         """进场"""
         d=p["data"]
@@ -162,8 +167,12 @@ class BiliLiveAllCmdHandle(blw.BiliLiveWS):
             log.debug(f"{t}: {d['status']}")
             raise SavePack(t)
     def l_ONLINE_RANK_V2(s,p):
-        """排行"""
+        """在线排行V2,JSON"""
         pass
+    def l_ONLINE_RANK_V3(s,p):
+        """在线排行V3,protobuf"""
+        s.dc_ONLINE_RANK_V3(p)
+        s.l_ONLINE_RANK_V2(p)
     def l_HOT_RANK_SETTLEMENT(s,p):
         """热门通知"""
         d=p["data"]

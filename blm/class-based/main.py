@@ -30,6 +30,8 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
             self.cookies|=a.cookie
         try:
             self.get_login_nav()
+            if "buvid3" not in self.cookies:
+                self.set_buvid3_4()
         except blw.GetDataError as e:
             self.p(str(e))
             sys.exit(1)

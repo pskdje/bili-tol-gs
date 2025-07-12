@@ -16,6 +16,7 @@ sys.path.append(str(cpb_path))
 
 # 数据解析导入
 from bilibili.live.xuserreward.v1_pb2 import InteractWord
+from bilibili.live.rankdb.v1_pb2 import GoldRankBroadcast
 
 class ParseProtobufPack(blw.BiliLiveWS):
     
@@ -34,4 +35,4 @@ class ParseProtobufPack(blw.BiliLiveWS):
         p["data"]=s.decodePB(p["data"]["pb"],InteractWord)
 
     def dc_ONLINE_RANK_V3(s,p):
-        pass#p["data"]=s.decodePB(p["data"]["pb"],)
+        p["data"]=s.decodePB(p["data"]["pb"],GoldRankBroadcast)

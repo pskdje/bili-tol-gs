@@ -172,6 +172,13 @@ class BiliLiveExp(blw.BiliLiveWS):
         for i in d["durl"]:
             self.p(f"线路{i['order']}链接:",i["url"])
 
+    def set_buvid3_4(self)->dict[str,str]:
+        """设置buvid3和buvid4这两个Cookie，并返回数据本体"""
+        d=self.get_rest_data("获取buvid3和buvid4","https://api.bilibili.com/x/frontend/finger/spi")["data"]
+        self.cookies["buvid3"]=d["b_3"]
+        self.cookies["buvid4"]=d["b_4"]
+        return d
+
 class BiliLiveBlackWordExp(BiliLiveExp):
     """屏蔽词命令行参数扩展"""
 
@@ -262,6 +269,8 @@ class BiliLiveMsg(BiliLiveExp):
         if a.cookie:
             self.cookies.update(a.cookie)
         self.get_login_nav()
+        if "buvid3" not in self.cookies:
+            self.set_buvid3_4()
         try:
             ri=self.get_room_init()
         except GetDataError as e:

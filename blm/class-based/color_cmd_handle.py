@@ -866,4 +866,5 @@ class AllCmdHandle(ModuleAllCmdHandle,ParseProtobufPack):
         s.l_INTERACT_WORD(p)
     def l_ONLINE_RANK_V3(s,p):
         """在线排行V3,protobuf"""
-        s.pct("支持","ONLINE_RANK_V3的proto文件缺失，无法解析")
+        s.dc_ONLINE_RANK_V3(p)
+        s.l_ONLINE_RANK_V2(p)
