@@ -222,7 +222,7 @@ class CoreCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
         s.pct("直播",f"撤销 {TNUM}{p['uid']}{CD} 的房管权限，消息: {TSTR}{p['msg']}{CD}")
     def l_CHANGE_ROOM_INFO(s,p):
         """背景更换"""
-        s.pct("直播",f"直播间 {TRMI}{b['roomid']}{CD} 信息变更 背景图: {DU}{b['background']}{EU}")
+        s.pct("直播",f"直播间 {TRMI}{p['roomid']}{CD} 信息变更 背景图: {DU}{p['background']}{EU}")
     def l_WARNING(s,p):
         """警告"""
         s.pct("警告",p["msg"],b=C_03)
@@ -465,6 +465,7 @@ class RareCmdHandle(BLMColor):
             raise SavePack("未知的status")
     def l_ROOM_SKIN_MSG(s,p):
         """直播间皮肤更新"""
+        d=p["data"]
         s.pct("信息","直播间皮肤更新",f"{TKEY}id: {TSTR}{d['skin_id']}{CD} ,{TKEY}status: {TSTR}{d['status']}{CD}",",结束时间:",time.strftime(TIMEFORMAT,time.gmtime(d["end_time"])),",当前时间:",time.strftime(TIMEFORMAT,time.gmtime(d["current_time"])))
     def l_MESSAGEBOX_USER_GAIN_MEDAL(s,p):
         """获得粉丝勋章"""
@@ -829,7 +830,7 @@ class PKCmdHandle(BLMColor):
         a=p["data"]
         i=a["init_info"]
         m=a["match_info"]
-        s.pct("PK","PK结束",s.pk_id_status(d),f"直播间{TRMI}{i['room_id']}{CD}获得{TNUM}{i['votes']}{CD}票，直播间{TRMI}{m['room_id']}{CD}获得{TNUM}{m['votes']}{CD}票")
+        s.pct("PK","PK结束",s.pk_id_status(p),f"直播间{TRMI}{i['room_id']}{CD}获得{TNUM}{i['votes']}{CD}票，直播间{TRMI}{m['room_id']}{CD}获得{TNUM}{m['votes']}{CD}票")
     def l_PK_BATTLE_SETTLE(s,p):
         """PK结算1"""
         pass

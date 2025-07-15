@@ -47,8 +47,9 @@ __all__:list[str]=[
     "WSClientError",
     "SavePack",
     # 类
-    "Proto",
+    "LiveMsgProto",
     "ArgsParser",
+    "CookiesAgent",
     "MsgWSInfo",
     "BiliLiveWS",
 ]
@@ -284,8 +285,8 @@ def wbi_encode(params:dict,imgKey:str,subKey:str)->argparse.Namespace:
         curr_time=ct
     )# 偷懒
 
-class Proto(typing.NamedTuple):
-    """ws数据包映射"""
+class LiveMsgProto(typing.NamedTuple):
+    """信息流数据包映射"""
     length:int # 数据包总长度
     headerLength:int # 头部长度
     ver:int # 协议版本
@@ -320,13 +321,40 @@ class ArgsParser(argparse.ArgumentParser):
             return lco[0].split()
         return [arg_line]
 
+class CookiesAgent:
+    """代理参数输入的Cookie信息"""
+
+    def __init__(self,cookies:dict):
+        """初始化Cookie信息代理"""
+        if isinstance(cookies,dict):
+            self.cookies=cookies
+        else:
+            raise TypeError("数据不是字典")
+
+    def __repr__(self):
+        """给出不清晰的Cookie信息"""
+        return f"<{self.__class__.__name__} length={len(self.cookies)}, SESSDATA is {'SESSDATA' in self.cookies}>"
+
+    # Cookie字典操作，若要更多操作请操作cookies属性
+    def __len__(self):
+        return len(self.cookies)
+    def __getitem__(self,key):
+        return self.cookies[key]
+    def __iter__(self):
+        return iter(self.cookies)
+    def __contains__(self,item):
+        return item in self.cookies
+
+    def keys(self):
+        return self.cookies.keys()
+
 class MsgWSInfo:
     """直播信息流的地址信息容纳"""
 
     def __init__(self,token:str,wss_host:str=None,
         *,data:dict=None,other:Any=None
     ):
-        """初始化"""
+        """初始化信息流的地址信息容纳"""
         self.data=data # 原始响应(可选)
         self.other=other # 其它信息(可选)
         self.token=token
@@ -379,7 +407,7 @@ class BiliLiveWS:
         return DEBUG
 
     def __init__(self):
-        """初始化一些必要变量"""
+        """初始化blw的一些必要变量"""
         self.save_cmd:list[str]=[]
         self.count_cmd:list[str]=[]
         self.pack_count:dict[str,int]={}
@@ -394,16 +422,19 @@ class BiliLiveWS:
         """对象概述"""
         return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}>"
 
-    def error(self,d:Any=None)->None:
+    def error(self,d:Any=None,**v:Any)->None:
         """记录异常，附带该类的部分变量"""
         error({
             "UA":self.UA,
+            "headers":self.headers,
+            "cookies":self.cookies if DEBUG else "未处于调试模式，默认不在错误信息里记录Cookie。",
             "sequence":self.sequence,
             "roomid":self.roomid,
             "uid":self.uid,
             "hpst":self.hpst,
             "args":self.args,
             "pack_count":self.pack_count,
+            **v,# 可通过剩余参数扩展列表
         },d)
     def p(self,*t:Any)->None:
         """输出文本"""
@@ -513,7 +544,7 @@ class BiliLiveWS:
     def get_Cookie(self,s:str)->str|None:
         """获取Cookie数据"""
         if hasattr(self,"read_cookie"):
-            return self.read_cookie(s)
+            return CookiesAgent(self.read_cookie(s))
         p=Path(s)
         c={}
         if p.is_file():
@@ -535,7 +566,7 @@ class BiliLiveWS:
                 return None
         else:
             c.update(split_kv_cookie(s))
-        return c
+        return CookiesAgent(c)
     def build_argparser(self,
         desc:str="哔哩哔哩直播信息流处理\n允许使用@来引入参数文件",
         epil:str=""
@@ -760,7 +791,7 @@ class BiliLiveWS:
             self.hpst=asyncio.create_task(self.loop_send_hp(ws),name="重复发送心跳包")
             self.on_live_msg_init_ok()
             async for msg in ws:
-                p=Proto.unpack(msg)
+                p=LiveMsgProto.unpack(msg)
                 if p[2]==1 and p[3]==3:
                     rq=self.print_popularity(msg[16:20])
                     log.debug(f"处理后人气值: {rq}, 原始数据: {p[5]}")

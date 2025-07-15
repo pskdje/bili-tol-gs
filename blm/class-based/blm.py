@@ -4,7 +4,8 @@
 import blw
 import sys,time,re,argparse
 from blw import GetDataError,WSClientError,log
-from typing import Any
+from collections.abc import Generator
+from typing import Any,Self
 
 __all__=[
     "add_no_cmd_args",
@@ -32,7 +33,7 @@ def add_no_cmd_args(cmd_args:list[dict],cmd_name_list:dict[str,str],help:Any=Non
         })
     return cmd_args
 
-def read_text_continue_h(path:str)->str:
+def read_text_continue_h(path:str)->Generator[str,None,str]:
     """读取文件，并在读取过程中忽略#开头的文本"""
     i=0
     with open(path,"rt")as f:
@@ -57,7 +58,7 @@ class SaveToFile:
     def __del__(self)->None:
         """删除时关闭文件"""
         self.close()
-    def __enter__(self)->"self":
+    def __enter__(self)->Self:
         """返回自身给上下文管理器"""
         return self
     def __exit__(self,exc_type,exc_val,exc_tb)->bool:
@@ -95,8 +96,20 @@ class BiliLiveExp(blw.BiliLiveWS):
     """哔哩哔哩直播信息流一般基本扩展"""
 
     add_args:dict=[]
+    """添加其它命令行参数"""
+    up_uid:int=-65536
+    """主播UID"""
 
-    def other_arg_add(self,argp:"argparse.ArgumentParser")->None:
+    def error(self,d:Any=None,**v:Any)->None:
+        """记录异常，附带该类的部分变量"""
+        nodefkey={}
+        if hasattr(self,"wbi_imgKey"):
+            nodefkey["wbi_imgKey"]=self.wbi_imgKey
+        if hasattr(self,"wbi_subKey"):
+            nodefkey["wbi_subKey"]=self.wbi_subKey
+        super().error(d,up_uid=self.up_uid,**nodefkey,**v)
+
+    def other_arg_add(self,argp:argparse.ArgumentParser)->None:
         """添加其它命令行参数
         从self.add_args读取数据来添加
         """
@@ -192,7 +205,7 @@ class BiliLiveBlackWordExp(BiliLiveExp):
             log.exception("读取屏蔽词时出现错误")
             raise ValueError("读取屏蔽词失败: "+str(e))
         return l
-    def from_file_handle_blocking_rules(self,path:str)->list[re.Pattern]:
+    def from_file_handle_blocking_rules(self,path:str)->list[re.Pattern[str]]:
         """从文件处理屏蔽规则"""
         l=[]
         try:
@@ -213,9 +226,21 @@ class BiliLiveBlackWordExp(BiliLiveExp):
         """返回屏蔽词列表"""
         return self.args.shielding_words
     @property
-    def brs(self)->list[re.Pattern]:
+    def brs(self)->list[re.Pattern[str]]:
         """返回屏蔽规则列表"""
         return self.args.blocking_rules
+
+    def is_blocked_msg(self,msg:str)->bool:
+        """检查输入的信息是否命中屏蔽规则"""
+        if msg in self.swd:
+            return True
+        for si in self.swd:
+            if si in msg:
+                return True
+        for bi in self.brs:
+            if bi.search(msg):
+                return True
+        return False
 
 class BiliLiveSaveExp(BiliLiveExp):
     """保存打印内容"""
