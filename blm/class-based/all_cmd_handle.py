@@ -5,7 +5,7 @@
 """
 
 import blw
-import json
+import json,time
 from blw import TIMEFORMAT,SavePack,log
 from cmd_pb.protobuf_cmd_handle import ParseProtobufPack
 
@@ -31,7 +31,7 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
             t=f"未知的交互类型: {d['msg_type']}"
             log.debug(t)
             if not s.args.no_print_enable:
-                pct("支持",t)
+                s.pct("支持",t)
             raise SavePack("未知的交互类型")
     def l_INTERACT_WORD_V2(s,p):
         """交互V2,protobuf"""

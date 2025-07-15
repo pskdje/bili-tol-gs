@@ -541,7 +541,7 @@ class BiliLiveWS:
         warnings.warn("不建议通过调用类的from_list_add_args方法，请改为调用blw对应名称的函数",category=PendingDeprecationWarning)
         return from_list_add_args(argobj,arg_list)
 
-    def get_Cookie(self,s:str)->str|None:
+    def get_Cookie(self,s:str)->CookiesAgent|None:
         """获取Cookie数据"""
         if hasattr(self,"read_cookie"):
             return CookiesAgent(self.read_cookie(s))

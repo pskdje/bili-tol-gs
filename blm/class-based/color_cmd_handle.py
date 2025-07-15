@@ -156,11 +156,8 @@ class CoreCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
     def l_DANMU_MSG(s,p):
         """弹幕"""
         d:list=p["info"]
-        if d[1]in s.swd:
+        if s.is_blocked_msg(d[1]):
             return
-        for b in s.brs:
-            if b.search(d[1]):
-                return
         tc=""
         if s.up_uid==d[2][0]:
             tc+=f"{C_01}(主播){CD}"
