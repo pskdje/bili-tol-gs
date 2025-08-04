@@ -53,7 +53,7 @@ class SaveToFile:
 
     def __init__(self,path:str)->None:
         """初始化"""
-        self.file=open(path,"at",encoding=blw.ENCODING,errors="xmlcharrefreplace")
+        self.file=open(path,"at",encoding=blw.ENCODING,errors="xmlcharrefreplace",newline="\n")
         self.temp=""
     def __del__(self)->None:
         """删除时关闭文件"""

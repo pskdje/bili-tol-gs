@@ -14,6 +14,7 @@ import typing,asyncio,argparse
 import struct,warnings
 import requests
 import websockets
+import logging.handlers
 from pathlib import Path
 from typing import Any,NoReturn
 try:
@@ -246,7 +247,7 @@ def savepack(d:dict)->bool:
         dp.mkdir()
     log.debug(f"数据包文件名: {fn}")
     try:
-        with open(fp,"w",encoding=ENCODING)as f:
+        with open(fp,"w",encoding=ENCODING,newline="\n")as f:
             f.write(json.dumps(d,ensure_ascii=False,indent="\t",sort_keys=False))
     except:
         error(f"保存数据包时出现错误\n路径: {fp.resolve()}\n数据: {d}")
@@ -408,14 +409,21 @@ class BiliLiveWS:
 
     def __init__(self):
         """初始化blw的一些必要变量"""
+
         self.save_cmd:list[str]=[]
+        """要被保存的cmd列表"""
         self.count_cmd:list[str]=[]
+        """要被计数的cmd列表"""
         self.pack_count:dict[str,int]={}
+        """cmd计数容纳"""
         self.headers:dict[str,str]={
             "Origin":"https://live.bilibili.com/",
             "User-Agent":self.UA
         }
+        """HTTP请求头容纳"""
         self.cookies:dict[str,str]={}
+        """Cookie容纳"""
+        # 已在类级别进行注释，不重复注释
         self.uid:int=0
         self.hpst=None
     def __repr__(self)->str:
@@ -888,6 +896,11 @@ class BiliLiveWS:
             self.print_cmd_count()
             sys.exit(0)
 
+def create_log_handle(path:str)->logging.handlers.RotatingFileHandler:
+    """创建日志保存处理"""
+    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/path,maxBytes=2097152,backupCount=3,encoding=ENCODING)
+    h.setLevel(logging.DEBUG)
+    return h
 def set_logpath()->bool:
     """检查日志路径，若不存在将自动创建"""
     p=LOGDIRPATH
@@ -898,21 +911,25 @@ def set_logpath()->bool:
     return True
 def set_log()->None:
     """保存运行日志"""
-    import logging.handlers
     set_logpath()
-    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ms.log",maxBytes=2097152,backupCount=3,encoding=ENCODING)
-    h.setLevel(logging.DEBUG)
+    h=create_log_handle("ms.log")
     h.setFormatter(logging.Formatter("{asctime} [{levelname}] '{filename}' {funcName}: {message}",style="{"))
     log.addHandler(h)
 def set_wslog()->None:
     """保存ws客户端日志"""
-    import logging.handlers
     set_logpath()
     if wslog.hasHandlers():return
-    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/"ws.log",maxBytes=2097152,backupCount=3,encoding=ENCODING)
-    h.setLevel(logging.DEBUG)
+    h=create_log_handle("ws.log")
     h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
     wslog.addHandler(h)
+def set_reqlog()->None:
+    """保存请求日志"""
+    set_logpath()
+    l=logging.getLogger("urllib3")
+    l.setLevel(logging.DEBUG)
+    h=create_log_handle("urllib3.log")
+    h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
+    l.addHandler(h)
 def save_log()->None:
     """配置保存日志"""
     global is_save_log
@@ -920,7 +937,15 @@ def save_log()->None:
         raise RuntimeError("不可重复配置保存日志")
     set_log()
     set_wslog()
+    set_reqlog()
     is_save_log=True
+
+def print_HTTPClient_log(set_response:bool=False)->None:
+    """设置http.client库的调试打印，传入一个布尔值来控制是否打印响应调试(因为响应已经在其它地方有记录到日志)"""
+    from http.client import HTTPConnection,HTTPResponse
+    HTTPConnection.debuglevel=1
+    if set_response:
+        HTTPResponse.debuglevel=1
 
 if __name__=="__main__":
     if "-d" in sys.argv:

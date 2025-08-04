@@ -227,6 +227,9 @@ class CoreCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
         """直播间内容审核结果(主要是审核标题)"""
         d=p["data"]
         s.pct("直播",f"直播间{TRMI}{d['room_id']}{CD}标题 {TSTR}{d['audit_title']}{CD} 审核结果: {C_07}{d['audit_reason']}{CD} ,{TKEY}审核内容类型:{TNUM}{d['audit_content_type']}{CD},{TKEY}审核类型:{TNUM}{d['audit_status']}{CD}")
+    def l_PLAYURL_RELOAD(s,p):
+        """播放链接刷新"""
+        s.pct("直播",f"{DI}播放链接刷新{DF}")
 
 class FrequentCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
     """频繁常见下发数据包的处理"""
@@ -492,7 +495,19 @@ class RareCmdHandle(BLMColor):
         else:
             s.pct("连麦",f"未知的连麦开关状态 {TNUM}{a}{CD}")
             raise SavePack("连麦开关状态")
-        s.pct("连麦",f"连麦开关状态: {t}")
+        s.pct("连麦","(V1)",f"连麦开关状态: {t}")
+    def l_VOICE_JOIN_SWITCH_V2(s,p):
+        """连麦开关状态V2"""
+        d=p["data"]
+        a=d["room_status"]
+        if a==0:
+            t="关闭"
+        elif a==1:
+            t="开启"
+        else:
+            s.pct("连麦",f"未知的连麦开关状态 {TNUM}{a}{CD}")
+            raise SavePack("连麦开关状态")
+        s.pct("连麦","(V2)",f"连麦开关状态: {t} root状态:{TNUM}{d['root_status']}{CD},conn_type:{TNUM}{d['conn_type']}{CD}")
     def l_LIVE_MULTI_VIEW_CHANGE(s,p):
         """多个直播视角信息更新"""
         if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
@@ -512,7 +527,12 @@ class RareCmdHandle(BLMColor):
         """人气榜"""
         if s.args.no_rank_changed:return
         d=p["data"]
-        s.pct("排行",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+        s.pct("排行","(V1)",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+    def l_RANK_CHANGED_V2(s,p):
+        """人气榜V2"""
+        if s.args.no_rank_changed:return
+        d=p["data"]
+        s.pct("排行","(V2)",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
     def l_REVENUE_RANK_CHANGED(s,p):
         """收入排行(机翻)"""
         if s.args.no_rank_changed:return
@@ -654,6 +674,12 @@ class RareCmdHandle(BLMColor):
         if s.args.no_GIFT_STAR_PROCESS:return
         d=p["data"]
         s.pct("提示","礼物星球",f"{TKEY}status:{TNUM}{d['status']}{CD}",d["tip"])
+    def l_WIDGET_GIFT_STAR_PROCESS(s,p):
+        """礼物星球小部件进度更新"""
+        if s.args.no_GIFT_STAR_PROCESS:return
+        d=p["data"]
+        for pi in d["process_list"]:
+            s.pct("信息","礼物星球",f"礼物{TNUM}{pi['gift_id']}{CD}当前{TNUM}{pi['completed_num']}{CD}个,目标{TNUM}{pi['target_num']}{CD}个")
     def l_ANCHOR_LOT_CHECKSTATUS(s,p):
         """天选时刻审核状态"""
         if s.args.no_anchor_lot:return

@@ -63,3 +63,19 @@ python bili_live_ws.py -h
 ## [bili_live_tool.py]
 
 开播组件。
+
+### [default_args.txt]
+
+~~默认命令行参数~~ ~~(我也不知道这是什么，只是想有一个名称有 default 的文件)~~
+
+### [bili_args.txt]
+
+仿照互动区域可能显示的内容来显示信息。
+
+### [msg_args.txt]
+
+只显示弹幕或留言(理论上是这样)
+
+### [my_args.txt]
+
+给我自己使用的命令行参数。

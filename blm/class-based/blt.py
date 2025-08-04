@@ -155,7 +155,11 @@ class DanmuTools(ToolBase):
     """弹幕"""
 
     send_danmu_time:float=0
+    """弹幕发送时间，用于速率限制。"""
     send_danmu_lock=asyncio.Lock()
+    """发送弹幕锁，防止并发发送导致发送失败。"""
+    send_danmu_block=30
+    """发送弹幕分块大小，用于防止因字数限制导致发送失败。"""
 
     def on_send_danmu_start(s,m)->None:
         """开始发送弹幕，传入要发送的弹幕"""
@@ -167,7 +171,7 @@ class DanmuTools(ToolBase):
 
     # 发送弹幕
     def send_danmu(self,msg:str,reply_mid:int=0,replay_dmid:str="")->dict:
-        """发送弹幕"""
+        """发送弹幕\n\nmsg: 弹幕内容\n\nreply_mid: 被回复者的uid\n\nreplay_dmid: 要回复的弹幕id"""
         r=self.get_rest_data("发送弹幕","https://api.live.bilibili.com/msg/send",self.add_csrf({
             "roomid":self.roomid,
             "msg":msg,
@@ -181,7 +185,10 @@ class DanmuTools(ToolBase):
         return json.loads(r["data"]["mode_info"]["extra"])
     async def send_msg_and_restrict(self,msg:str,rate_limit:bool=True,*an:Any,**ad:Any)->None|str:
         """发送弹幕并进行一些限制
-        将限制发送速率并视消息长度进行分割"""
+        将限制发送速率并视消息长度进行分割\n
+        msg: 弹幕内容，若超出弹幕分块大小将进行分块\n
+        rate_limit: 是否启用基于发送时间的速率限制，触发限制将丢弃弹幕\n
+        ad: 其它传递给`send_danmu`的参数"""
         m=str(msg)
         ml=len(m)
         idx=0
@@ -242,15 +249,22 @@ class DanmuTools(ToolBase):
 class LiveTools(ToolBase):
     """开关播"""
 
-    def startLive(self,area:int,platform:str="pc_link",*,return_type:str="LiveLink")->LiveLink|dict:
-        """开始直播"""
+    def startLive(self,area:int,platform:str="pc_link",build="",version="",*,return_type:str="LiveLink")->LiveLink|dict:
+        """开始直播\n
+        area: 直播分区\n
+        platform: 直播平台\n
+        build: 直播姬构建编号\n
+        version: 直播姬版本号\n
+        return_type: 返回数据类型('raw':原始响应,'data':信息本体,其它值:LiveLink对象)"""
         b=self.add_csrf({
             "room_id":self.roomid,
             "area_v2":area,
             "platform":platform,
+            "build":build,
+            "version":version,
+            "access_key":"",
         })
-        if platform!="pc_link":
-            b=self.appsign(b)
+        b=self.appsign(b)
         r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",b)
         d=r["data"]
         self.live_key=d["live_key"]
@@ -261,7 +275,8 @@ class LiveTools(ToolBase):
             return d
         return LiveLink(d["rtmp"]["addr"],d["rtmp"]["code"])
     def stopLive(self,platform:str="pc_link")->dict:
-        """停止直播"""
+        """停止直播\n
+        platform: 直播平台"""
         b=self.add_csrf({
             "room_id":self.roomid,
             "platform":platform,
@@ -285,7 +300,11 @@ class RoomTools(ToolBase):
     """直播间管理"""
 
     def room_update(self,title:str=None,area:int=None,add_tag:str=None,del_tag:str=None)->dict:
-        """更新直播间信息"""
+        """更新直播间信息\n
+        title: 直播标题\n
+        area: 直播分区\n
+        add_tag: 要添加的标签\n
+        del_tag: 要删除的标签"""
         b=self.add_csrf({
             "room_id":self.roomid,
         })
@@ -300,7 +319,10 @@ class RoomTools(ToolBase):
         return self.get_rest_data("更新直播间信息","https://api.live.bilibili.com/room/v1/Room/update",b)["data"]
 
     def updatePreLiveInfo(self,cover:str=None,title:str=None,*,platform:str="web")->dict:
-        """预更新直播信息"""
+        """预更新直播信息\n
+        cover: 直播封面URL\n
+        title: 直播标题\n
+        platform: 直播平台"""
         b=self.add_csrf({
             "platform":platform,
             "mobi_app":platform,
@@ -332,9 +354,17 @@ class LiveReplay(ToolBase):
         })
         return self.get_rest_data("删除回放剪辑草稿","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/DeleteSliceDraft",b)
 
+    def get_slice_stream(self,live_key:str,start_time:int,end_time:int)->dict:
+        """获取切片视频流"""
+        return self.get_rest_data("获取切片视频流",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetSliceStream?live_key={live_key}&start_time={start_time}&end_time={end_time}")["data"]
+    def get_live_session_data(self,live_key:str,start_tm:str="2000-01-01+08:00:00",end_tm:str="2030-01-01+08:00:00")->dict:
+        """获取直播会话数据"""
+        return self.get_rest_data("获取直播会话数据",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetLiveSessionData?live_key={live_key}&start_tm={start_tm}&end_tm={end_tm}")["data"]
+
     def publish_video_slice(self,live_key:str,start_ts:int,end_ts:int,av_title:str,av_cover:str="https://i0.hdslb.com/bfs/live/59fc254c1f51a962dbf69ae85e4920f2f6fb8dcd.png",av_highlight:int=0,with_subtitle:int=0,with_danmaku:int=0)->dict[str,int]:
         """发布回放片段
-        从av_title参数开始，建议使用关键字参数"""
+        从av_title参数开始，建议使用关键字参数
+        参数解释见[BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/live_replay.md#%E6%8A%95%E7%A8%BF%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE%E7%89%87%E6%AE%B5)"""
         b=self.add_csrf({
             "live_key":live_key,
             "start_ts":start_ts,

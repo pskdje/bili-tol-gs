@@ -112,6 +112,9 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
     def l_WARNING(s,p):
         """警告"""
         s.pct("警告",p["msg"])
+    def l_PLAYURL_RELOAD(s,p):
+        """播放链接刷新"""
+        s.pct("直播","播放链接刷新")
     def l_DANMU_AGGREGATION(s,p):
         """弹幕聚集"""
         pass
@@ -140,7 +143,18 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         else:
             s.pct("连麦",f"未知的连麦开关状态 {a}")
             raise SavePack("连麦开关状态")
-        s.pct("连麦",f"连麦开关状态: {t}")
+        s.pct("连麦","(V1)",f"连麦开关状态: {t}")
+    def l_VOICE_JOIN_SWITCH_V2(s,p):
+        """连麦开关状态V2"""
+        a=p["data"]["room_status"]
+        if a==0:
+            t="关闭"
+        elif a==1:
+            t="开启"
+        else:
+            s.pct("连麦",f"未知的V2连麦开关状态 {a}")
+            raise SavePack("连麦开关状态")
+        s.pct("连麦","(V2)",f"连麦开关状态: {t}")
     def l_VOICE_JOIN_LIST(s,p):
         """连麦列表(需要更新)"""
         d=p["data"]
@@ -282,7 +296,11 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
     def l_RANK_CHANGED(s,p):
         """人气榜"""
         d=p["data"]
-        s.pct("排行",d["rank_name_by_type"],f"rank_type:{d['rank_type']},rank:{d['rank']}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+        s.pct("排行","(V1)",d["rank_name_by_type"],f"rank_type:{d['rank_type']},rank:{d['rank']}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+    def l_RANK_CHANGED_V2(s,p):
+        """人气榜V2"""
+        d=p["data"]
+        s.pct("排行","(V2)",d["rank_name_by_type"],f"rank_type:{d['rank_type']},rank:{d['rank']}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
     def l_REVENUE_RANK_CHANGED(s,p):
         """收入排行(机翻)"""
         d=p["data"]
@@ -393,6 +411,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """礼物星球进度"""
         d=p["data"]
         s.pct("提示","礼物星球",f"status:{d['status']}",d["tip"])
+    def l_WIDGET_GIFT_STAR_PROCESS(s,p):
+        """礼物星球小部件进度更新"""
+        d=p["data"]
+        s.pct("提示","礼物星球进度更新")
     def l_ANCHOR_LOT_CHECKSTATUS(s,p):
         """天选时刻审核状态"""
         d=p["data"]
