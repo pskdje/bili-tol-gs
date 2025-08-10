@@ -30,6 +30,8 @@
 
 ## 文件夹/文件
 
+当前维护的主程序目录: class-based
+
 ### [process-based/]
 
 基于流程的旧程序。
@@ -56,7 +58,9 @@
 
 自动切割数据包。
 
-bili_live_ws.py 就是从这拓展出来的。
+主程序 就是从这拓展出来的。
+
+已不适应最新情况。
 
 用法:
 ```shell
@@ -75,3 +79,5 @@ python "bili live msg.py" [roomid]
 ## 参考
 
 [SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) 提供数据包格式和URL
+
+[open-live.bilibili.com](https://open-live.bilibili.com/document/) 新版数据包解析逻辑支持，提供开放API
