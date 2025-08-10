@@ -84,6 +84,7 @@ TRTG=C_04# 最前面的那个[]的颜色
 TUSR=C_03# 用户名
 TNUM=C_06# 数字、数量
 TRMI=C_14# 房间号
+TVER=C_02# cmd版本
 TKEY=cfc(27)# key
 TSTR=cfc(28)# string
 TBOL=cfc(29)# boolean
@@ -380,6 +381,7 @@ class RareCmdHandle(BLMColor):
         "GIFT_STAR_PROCESS":"礼物星球进度",
         "anchor-lot":"天选时刻",
         "ANCHOR_NORMAL_NOTIFY":"推荐提示",
+        "POPULAR_RANK_GUIDE_CARD":"冲榜提示卡",
         "SYS_MSG":"系统消息",
         "PLAY_TAG":"直播进度条节点标签",
         "ANCHOR_BROADCAST":"直播小助手广播",
@@ -423,6 +425,8 @@ class RareCmdHandle(BLMColor):
                 s.pct("通知",RGPL.sub(C_13+"\\1"+CD,cse["text"]))
             elif cset==2:
                 s.pct("通知","图片:",f"{DU}{cse.get('img_url')}{EU}")
+            elif cset==3:
+                s.pct("通知",f"{TSTR}{cse['text']}{CD} ,链接: {DU}{cse.get('uri')}{EU}")
             else:
                 s.pct("通知",C_07+DI+"无法展示的通知组件")
                 log.debug(f"未知的通知组件类型: {cset}")
@@ -495,7 +499,7 @@ class RareCmdHandle(BLMColor):
         else:
             s.pct("连麦",f"未知的连麦开关状态 {TNUM}{a}{CD}")
             raise SavePack("连麦开关状态")
-        s.pct("连麦","(V1)",f"连麦开关状态: {t}")
+        s.pct("连麦",f"{TVER}(V1){CD}",f"连麦开关状态: {t}")
     def l_VOICE_JOIN_SWITCH_V2(s,p):
         """连麦开关状态V2"""
         d=p["data"]
@@ -507,12 +511,17 @@ class RareCmdHandle(BLMColor):
         else:
             s.pct("连麦",f"未知的连麦开关状态 {TNUM}{a}{CD}")
             raise SavePack("连麦开关状态")
-        s.pct("连麦","(V2)",f"连麦开关状态: {t} root状态:{TNUM}{d['root_status']}{CD},conn_type:{TNUM}{d['conn_type']}{CD}")
+        s.pct("连麦",f"{TVER}(V2){CD}",f"连麦开关状态: {t} root状态:{TNUM}{d['root_status']}{CD},conn_type:{TNUM}{d['conn_type']}{CD}")
     def l_LIVE_MULTI_VIEW_CHANGE(s,p):
         """多个直播视角信息更新"""
         if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
         s.pct("信息","LIVE_MULTI_VIEW_CHANGE",p["data"])
         raise SavePack("未知数据包")
+    def l_LIVE_MULTI_VIEW_NEW_INFO(s,p):
+        """多个直播视角信息更新"""
+        if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
+        d=p["data"]
+        s.pct("信息","直播多视角",d['title'],f"{TSTR}{d['copy_writing']}{CD}",f"房间数量{TNUM}{len(d['room_list'])}{CD} 关系数量{TNUM}{len(d['relation_view'])}")
     def l_POPULAR_RANK_CHANGED(s,p):
         """人气排行榜更新(可能已弃用)"""
         if s.args.no_rank_changed:return
@@ -527,12 +536,12 @@ class RareCmdHandle(BLMColor):
         """人气榜"""
         if s.args.no_rank_changed:return
         d=p["data"]
-        s.pct("排行","(V1)",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+        s.pct("排行",f"{TVER}(V1){CD}",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
     def l_RANK_CHANGED_V2(s,p):
         """人气榜V2"""
         if s.args.no_rank_changed:return
         d=p["data"]
-        s.pct("排行","(V2)",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
+        s.pct("排行",f"{TVER}(V2){CD}",d["rank_name_by_type"],f"{TKEY}rank_type:{TNUM}{d['rank_type']}{CD},{TKEY}rank:{TNUM}{d['rank']}{CD}")# 无法确定rank与实际排名相关，有数据包表明这是不同的
     def l_REVENUE_RANK_CHANGED(s,p):
         """收入排行(机翻)"""
         if s.args.no_rank_changed:return
@@ -714,6 +723,14 @@ class RareCmdHandle(BLMColor):
         if s.args.no_ANCHOR_NORMAL_NOTIFY:return
         d=p["data"]
         s.pct("通知","推荐",f"{TKEY}type:{TNUM}{d['type']}{TKEY},show_type:{TNUM}{d['show_type']}{CD}",d["info"]["content"])
+    def l_POPULAR_RANK_GUIDE_CARD(s,p):
+        """冲榜提示卡"""
+        if s.args.no_POPULAR_RANK_GUIDE_CARD:return
+        d=p["data"]
+        h="提示"
+        s.pct(h,d["title"])
+        s.pct(h,d["sub_text"])
+        s.pct(h,d["popup_title"])
     def l_ANCHOR_ECOLOGY_LIVING_DIALOG(s,p):
         """提示框(用于警告?)"""
         h="对话框"

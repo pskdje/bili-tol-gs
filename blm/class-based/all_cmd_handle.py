@@ -202,6 +202,8 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
                 s.pct("通知",cse["text"])
             elif cset==2:
                 s.pct("通知","图片:",cse.get("img_url"))
+            elif cset==3:
+                s.pct("通知",cse["text"],",链接:",cse.get("uri"))
             else:
                 log.debug(f"未知的通知组件类型: {cset}")
                 raise SavePack("通知组件类型")
@@ -246,6 +248,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """多个直播视角信息更新"""
         s.pct("信息","LIVE_MULTI_VIEW_CHANGE",p["data"])
         raise SavePack("未知数据包")
+    def l_LIVE_MULTI_VIEW_NEW_INFO(s,p):
+        """多个直播视角信息更新"""
+        d=p["data"]
+        s.pct("信息","直播多视角",d["title"],d["copy_writing"],"房间数量",len(d["room_list"]))
     def l_POPULARITY_RED_POCKET_NEW(s,p):
         """新红包"""
         d=p["data"]
@@ -444,7 +450,7 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         d=p["data"]
         s.pct("通知","推荐",f"type:{d['type']},show_type:{d['show_type']}",d["info"]["content"])
     def l_POPULAR_RANK_GUIDE_CARD(s,p):
-        """冲榜提示卡(推测)(发包情况未知)(弃用情况未知)"""
+        """冲榜提示卡"""
         h="提示"
         d=p["data"]
         s.pct(h,d["title"])

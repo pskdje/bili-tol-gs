@@ -76,6 +76,14 @@ wbi_mixinKeyEncTab=[
     36, 20, 34, 44, 52
 ]# wbi重排映射表
 
+# 检查是否开启解释器层级的调试模式
+if False:# 是否阻止检查解释器的调试模式
+    pass
+elif sys.flags.debug:
+    DEBUG=True
+elif sys.flags.dev_mode:
+    DEBUG=True
+
 def error(v:dict[Any]=None,d:Any=None)->None:
     """记录异常
     v: 额外的变量列表
@@ -98,6 +106,7 @@ def error(v:dict[Any]=None,d:Any=None)->None:
             f.write("哔哩哔哩直播信息流\n时间: ")
             f.write(time.strftime("%Y/%m/%d-%H:%M:%S%z"))
             f.write("\n版本信息: "+VERSIONINFO)
+            f.write("\n平台标识: "+str(sys.platform))
             f.write("\n全局用户代理常量: "+str(UA))
             f.write("\n启动时间戳: "+str(starttime))
             f.write("\n累计错误数: "+str(cumulative_error_count))
@@ -615,7 +624,7 @@ class BiliLiveWS:
         if args is not None:
             log.debug(f"从提供的参数列表来处理命令行参数: {args}")
         args=parser.parse_args(args)
-        DEBUG=DEBUG or args.debug
+        DEBUG=bool(DEBUG or args.debug)
         log.debug(f"命令行参数: {args}")
         self.args=args
         self.roomid=args.roomid
@@ -840,7 +849,7 @@ class BiliLiveWS:
     def run_blw_client(self,host:str,token:str)->None:
         """运行ws客户端"""
         try:
-            asyncio.run(self.ws_client(f"wss://{host}/sub",token))
+            asyncio.run(self.ws_client(f"wss://{host}/sub",token),debug=True if DEBUG else None)
         except websockets.ConnectionClosedError as e:
             log.warning("连接关闭: "+str(e))
             self.error()
@@ -930,6 +939,14 @@ def set_reqlog()->None:
     h=create_log_handle("urllib3.log")
     h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
     l.addHandler(h)
+def set_asyncio_log()->None:
+    """保存asyncio日志"""
+    set_logpath()
+    l=logging.getLogger("asyncio")
+    l.setLevel(logging.DEBUG)
+    h=create_log_handle("asyncio.log")
+    h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
+    l.addHandler(h)
 def save_log()->None:
     """配置保存日志"""
     global is_save_log
@@ -938,6 +955,7 @@ def save_log()->None:
     set_log()
     set_wslog()
     set_reqlog()
+    set_asyncio_log()
     is_save_log=True
 
 def print_HTTPClient_log(set_response:bool=False)->None:
@@ -947,8 +965,11 @@ def print_HTTPClient_log(set_response:bool=False)->None:
     if set_response:
         HTTPResponse.debuglevel=1
 
+if DEBUG:# 若初始化时就启用调试模式，将进行的操作
+    save_log()
+
 if __name__=="__main__":
-    if "-d" in sys.argv:
+    if "-d" in sys.argv and not DEBUG:
         save_log()
     log.info("直接启动")
     BiliLiveWS().start()
