@@ -213,7 +213,7 @@ async def start(kid:str,kse:str,appid:int,code:str)->None:
 def main():
     k=get_access_key()
     try:
-        asyncio.run(start(k["kid"],k["kse"],1732359181754,"DXNSNEEKL9MO1"))
+        asyncio.run(start(k["kid"],k["kse"],0,"笑死，竟然把主播身份码也开源了。"))
     except KeyboardInterrupt:
         print("exit")
 
