@@ -64,6 +64,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """醒目留言"""
         d=p["data"]
         s.pct("留言",f"{d['user_info']['uname']}(￥{d['price']}):",d["message"])
+    def l_SUPER_CHAT_MESSAGE_JPN(s,p):
+        """醒目留言日语"""
+        d=p["data"]
+        s.pct("留言","日语",d.get("message_jpn"))
     def l_SUPER_CHAT_MESSAGE_DELETE(s,p):
         """醒目留言删除"""
         s.pct("留言","醒目留言删除:",p["data"]["ids"])
@@ -251,7 +255,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
     def l_LIVE_MULTI_VIEW_NEW_INFO(s,p):
         """多个直播视角信息更新"""
         d=p["data"]
-        s.pct("信息","直播多视角",d["title"],d["copy_writing"],"房间数量",len(d["room_list"]))
+        if d["room_list"]is None:
+            s.pct("信息","直播多视角已结束")
+        else:
+            s.pct("信息","直播多视角",d["title"],d["copy_writing"],"房间数量",len(d["room_list"]))
     def l_POPULARITY_RED_POCKET_NEW(s,p):
         """新红包"""
         d=p["data"]
@@ -291,6 +298,12 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
                 e=True
         if e:
             raise SavePack(f"未知点赞通知类型:{t}")
+    def l_UNIVERSAL_EVENT_GIFT(s,p):
+        """连线礼物累计变化信息"""
+        s.pct("信息","(V1)","连线礼物累计变化")
+    def l_UNIVERSAL_EVENT_GIFT_V2(s,p):
+        """连线礼物累计变化信息V2"""
+        s.pct("信息","(V2)","连线礼物累计变化")
     def l_POPULAR_RANK_CHANGED(s,p):
         """人气排行榜更新(可能已弃用)"""
         d=p["data"]

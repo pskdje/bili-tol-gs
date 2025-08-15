@@ -288,6 +288,12 @@ class FrequentCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
             return
         d=p["data"]
         s.pct("留言",f"{TUSR}{d['user_info']['uname']}{CD}({C_11}￥{d['price']}{CD}):{C_07}",d["message"])
+    def l_SUPER_CHAT_MESSAGE_JPN(s,p):
+        """醒目留言日语"""
+        if s.args.no_SUPER_CHAT_MESSAGE:
+            return
+        d=p["data"]
+        s.pct("留言","日语"+C_07,d.get("message_jpg"))
     def l_SUPER_CHAT_MESSAGE_DELETE(s,p):
         """醒目留言删除"""
         if s.args.no_SUPER_CHAT_MESSAGE_DELETE:
@@ -359,6 +365,103 @@ class FrequentCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
         d=p["data"]
         s.pct("交互",f"{TUSR}{d['uname']}{CD} {d['like_text']}")
 
+class ConditionsFrequentCmdHandle(BLMColor):
+    """特定条件时高频下发的数据包处理"""
+
+    cmd_args=blm.add_no_cmd_args([],{
+        "WIDGET_BANNER":"小部件",
+        "LIVE_MULTI_VIEW_CHANGE":"多个直播视角信息更新",
+        "DM_INTERACTION":"交互合并",
+    })
+
+    clr_dm_inter_task:asyncio.Task=None
+    """清除已过期的交互合并任务"""
+    dm_inter_list:dict[int,dict[str,int]]={}
+    """交互合并暂存"""
+
+    def l_WIDGET_BANNER(s,p):
+        """小部件"""
+        if s.args.no_WIDGET_BANNER:return
+        d=p["data"]
+        for wi in d["widget_list"]:
+            wic=d["widget_list"][wi]
+            if wic is None:
+                continue
+            s.pct("小部件",f"{TKEY}key:{TSTR}{wi}{CD} id {wic['id']} 标题: {TSTR}{wic['title']}{CD}")
+    def l_LIVE_MULTI_VIEW_CHANGE(s,p):
+        """多个直播视角信息更新"""
+        if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
+        s.pct("信息","LIVE_MULTI_VIEW_CHANGE",p["data"])
+        raise SavePack("未知数据包")
+    def l_LIVE_MULTI_VIEW_NEW_INFO(s,p):
+        """多个直播视角信息更新"""
+        if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
+        d=p["data"]
+        if d["room_list"]is None:
+            s.pct("信息","直播多视角已结束")
+        else:
+            s.pct("信息","直播多视角",d['title'],f"{TSTR}{d['copy_writing']}{CD}",f"房间数量{TNUM}{len(d['room_list'])}{CD} 关系数量{TNUM}{len(d['relation_view'])}")
+    async def clr_dm_inter(self)->None:
+        """清理长时间无变化的信息"""
+        d=self.dm_inter_list
+        try:
+            while True:
+                await asyncio.sleep(60)
+                t=int(time.time())
+                dl=[]
+                for k in d:
+                    v=d[k]
+                    if v["time"]>t-30:continue
+                    dl.append(k)
+                for n in dl:
+                    del d[n]
+                del dl
+        except(KeyboardInterrupt,asyncio.CancelledError):
+            pass
+    def dm_inter_min(self,id:int,cnt:int)->bool:
+        """控制交互合并的打印"""
+        d=self.dm_inter_list
+        def tm()->int:
+            return int(time.time())
+        if self.clr_dm_inter_task is None:
+            self.clr_dm_inter_task=asyncio.create_task(self.clr_dm_inter(),name="清理不使用的交互合并id")
+        if id not in d:
+            d[id]={
+                "time":tm(),
+                "num":cnt
+            }
+            return False
+        s=d[id]
+        if s["num"]<cnt:
+            s["time"]=tm()
+            s["num"]=cnt
+            return False
+        if s["time"]<tm()-1:
+            s["time"]=tm()
+            s["num"]=cnt
+            return False
+        return True
+    def l_DM_INTERACTION(s,p):
+        """交互合并"""
+        if s.args.no_DM_INTERACTION:return
+        d=p["data"]
+        h="交互合并"
+        n=json.loads(d["data"])
+        t=d["type"]
+        if t==102:# 弹幕
+            for c in n["combo"]:
+                if s.dm_inter_min(c["id"],c["cnt"]):return
+                s.pct(h,f"{C_10}{c['guide']}{C_07}",c["content"],TNUM+"×"+str(c["cnt"]))
+        elif t==104:# 送礼
+            if s.dm_inter_min(d["id"],n["cnt"]):return
+            s.pct(h,f"{TNUM}{n['cnt']}{C_10} {n['suffix_text']} {TKEY}gift_id: {TSTR}{n['gift_id']}")
+        elif t==103 or t==105 or t==106:# 关注，分享，点赞
+            if s.dm_inter_min(d["id"],n["cnt"]):return
+            s.pct(h,f"{TNUM}{n['cnt']}{C_10} {n['suffix_text']}")
+        else:
+            log.debug(f"未知的交互合并类型: {t}")
+            raise SavePack("交互合并类型")
+
 class RareCmdHandle(BLMColor):
     """低频少见特定条件的数据包处理"""
 
@@ -367,13 +470,10 @@ class RareCmdHandle(BLMColor):
         "COMMON_NOTICE_DANMAKU":"普通通知",
         "GUARD_BUY":"舰队购买",
         "USER_TOAST_MSG":"舰队续费",
-        "WIDGET_BANNER":"小部件",
         "SUPER_CHAT_ENTRANCE":"醒目留言入口变化",
-        "LIVE_MULTI_VIEW_CHANGE":"多个直播视角信息更新",
         "rank-changed":"排行更新",
         "popularity-red-pocket":"红包相关",
         "LIKE_INFO_V3_NOTICE":"点赞通知",
-        "DM_INTERACTION":"交互合并",
         "GUARD_HONOR_THOUSAND":"千舰主播增减",
         "RECOMMEND_CARD":"推荐卡片",
         "GOTO_BUY_FLOW":"购买商品",
@@ -393,11 +493,6 @@ class RareCmdHandle(BLMColor):
     only_count_cmd=[
         "HOT_ROOM_NOTIFY",
     ]
-
-    clr_dm_inter_task:asyncio.Task=None
-    """清除已过期的交互合并任务"""
-    dm_inter_list:dict[int,dict[str,int]]={}
-    """交互合并暂存"""
 
     def l_LITTLE_TIPS(s,p):
         """某种提示，内容可能与使用的会话信息有关"""
@@ -445,15 +540,6 @@ class RareCmdHandle(BLMColor):
         """(同上)"""
         if s.args.no_USER_TOAST_MSG:return
         d=p["data"]
-    def l_WIDGET_BANNER(s,p):
-        """小部件"""
-        if s.args.no_WIDGET_BANNER:return
-        d=p["data"]
-        for wi in d["widget_list"]:
-            wic=d["widget_list"][wi]
-            if wic is None:
-                continue
-            s.pct("小部件",f"{TKEY}key:{TSTR}{wi}{CD} id {wic['id']} 标题: {TSTR}{wic['title']}{CD}")
     def l_SUPER_CHAT_ENTRANCE(s,p):
         """醒目留言入口变化"""
         if s.args.no_SUPER_CHAT_ENTRANCE:return
@@ -512,16 +598,6 @@ class RareCmdHandle(BLMColor):
             s.pct("连麦",f"未知的连麦开关状态 {TNUM}{a}{CD}")
             raise SavePack("连麦开关状态")
         s.pct("连麦",f"{TVER}(V2){CD}",f"连麦开关状态: {t} root状态:{TNUM}{d['root_status']}{CD},conn_type:{TNUM}{d['conn_type']}{CD}")
-    def l_LIVE_MULTI_VIEW_CHANGE(s,p):
-        """多个直播视角信息更新"""
-        if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
-        s.pct("信息","LIVE_MULTI_VIEW_CHANGE",p["data"])
-        raise SavePack("未知数据包")
-    def l_LIVE_MULTI_VIEW_NEW_INFO(s,p):
-        """多个直播视角信息更新"""
-        if s.args.no_LIVE_MULTI_VIEW_CHANGE:return
-        d=p["data"]
-        s.pct("信息","直播多视角",d['title'],f"{TSTR}{d['copy_writing']}{CD}",f"房间数量{TNUM}{len(d['room_list'])}{CD} 关系数量{TNUM}{len(d['relation_view'])}")
     def l_POPULAR_RANK_CHANGED(s,p):
         """人气排行榜更新(可能已弃用)"""
         if s.args.no_rank_changed:return
@@ -588,66 +664,6 @@ class RareCmdHandle(BLMColor):
                 e=True
         if e:
             raise SavePack(f"未知点赞通知类型:{t}")
-    async def clr_dm_inter(self)->None:
-        """清理长时间无变化的信息"""
-        d=self.dm_inter_list
-        try:
-            while True:
-                await asyncio.sleep(60)
-                t=int(time.time())
-                dl=[]
-                for k in d:
-                    v=d[k]
-                    if v["time"]>t-30:continue
-                    dl.append(k)
-                for n in dl:
-                    del d[n]
-                del dl
-        except(KeyboardInterrupt,asyncio.CancelledError):
-            pass
-    def dm_inter_min(self,id:int,cnt:int)->bool:
-        """控制交互合并的打印"""
-        d=self.dm_inter_list
-        def tm()->int:
-            return int(time.time())
-        if self.clr_dm_inter_task is None:
-            self.clr_dm_inter_task=asyncio.create_task(self.clr_dm_inter(),name="清理不使用的交互合并id")
-        if id not in d:
-            d[id]={
-                "time":tm(),
-                "num":cnt
-            }
-            return False
-        s=d[id]
-        if s["num"]<cnt:
-            s["time"]=tm()
-            s["num"]=cnt
-            return False
-        if s["time"]<tm()-1:
-            s["time"]=tm()
-            s["num"]=cnt
-            return False
-        return True
-    def l_DM_INTERACTION(s,p):
-        """交互合并"""
-        if s.args.no_DM_INTERACTION:return
-        d=p["data"]
-        h="交互合并"
-        n=json.loads(d["data"])
-        t=d["type"]
-        if t==102:# 弹幕
-            for c in n["combo"]:
-                if s.dm_inter_min(c["id"],c["cnt"]):return
-                s.pct(h,f"{C_10}{c['guide']}{C_07}",c["content"],TNUM+"×"+str(c["cnt"]))
-        elif t==104:# 送礼
-            if s.dm_inter_min(d["id"],n["cnt"]):return
-            s.pct(h,f"{TNUM}{n['cnt']}{C_10} {n['suffix_text']} {TKEY}gift_id: {TSTR}{n['gift_id']}")
-        elif t==103 or t==105 or t==106:# 关注，分享，点赞
-            if s.dm_inter_min(d["id"],n["cnt"]):return
-            s.pct(h,f"{TNUM}{n['cnt']}{C_10} {n['suffix_text']}")
-        else:
-            log.debug(f"未知的交互合并类型: {t}")
-            raise SavePack("交互合并类型")
     def l_LOG_IN_NOTICE(s,p):
         """登录提示"""
         d=p["data"]
@@ -802,6 +818,10 @@ class RareCmdHandle(BLMColor):
         if s.args.no_PLAY_TAG:return
         d=p["data"]
         s.pct("直播","进度条标签",f"{TKEY}id:{TNUM}{d['tag_id']}{CD} 时间戳:{TNUM}{d['timestamp']}{CD} 类型: {TSTR}{d['type']}{CD} 图片: {DU}{d['pic']}")
+    def l_PLAYTOGETHER_ICON_CHANGE(s,p):
+        """(未知)一起玩图标更新"""
+        d=p["data"]
+        s.pct("状态","一起玩图标",f"分区 {TNUM}{d['area_id']}{CD} {TKEY}has_perm:{TNUM}{d['has_perm']}{CD},{TKEY}show_count:{TNUM}{d['show_count']}{CD}")
     def l_CHG_RANK_REFRESH(s,p):
         """(未知)可能是刷新排行榜"""
         pass
@@ -891,10 +911,10 @@ class PKCmdHandle(BLMColor):
         """同上，少了data部分"""
         s.pct("PK","惩罚时间结束",s.pk_id_status(p))
 
-class ModuleAllCmdHandle(CoreCmdHandle,FrequentCmdHandle,RareCmdHandle,PKCmdHandle):
+class ModuleAllCmdHandle(CoreCmdHandle,FrequentCmdHandle,ConditionsFrequentCmdHandle,RareCmdHandle,PKCmdHandle):
     """该模块全部cmd的集合"""
 
-    cmd_args= CoreCmdHandle.cmd_args + FrequentCmdHandle.cmd_args + RareCmdHandle.cmd_args + PKCmdHandle.cmd_args
+    cmd_args= CoreCmdHandle.cmd_args + FrequentCmdHandle.cmd_args + ConditionsFrequentCmdHandle.cmd_args + RareCmdHandle.cmd_args + PKCmdHandle.cmd_args
 
     only_count_cmd= RareCmdHandle.only_count_cmd
 
