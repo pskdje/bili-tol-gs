@@ -223,7 +223,7 @@ class CoreCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
         s.pct("直播",f"直播间 {TRMI}{p['roomid']}{CD} 信息变更 背景图: {DU}{p['background']}{EU}")
     def l_WARNING(s,p):
         """警告"""
-        s.pct("警告",p["msg"],b=C_03)
+        s.pct("警告",f"{C_03}{p['msg']}",b=B_01)
     def l_ROOM_CONTENT_AUDIT_REPORT(s,p):
         """直播间内容审核结果(主要是审核标题)"""
         d=p["data"]

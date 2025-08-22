@@ -19,6 +19,7 @@ __all__=[
     "ToolBase",
     # 分类接口
     "DanmuTools",
+    "SpectatorTools",
     "LiveTools",
     "LiveDataTools",
     "RoomTools",
@@ -246,6 +247,20 @@ class DanmuTools(ToolBase):
         """获取历史弹幕"""
         return self.get_rest_data("获取历史弹幕",f"https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory?roomid={self.roomid}")
 
+class SpectatorTools(ToolBase):
+    """观众操作"""
+
+    def getInfoByUser(self):
+        """获取用户在某个直播间的状态信息，此接口将会使服务器下发进入直播间信息"""
+        d=self.get_rest_data("进入直播间",f"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByUser?room_id={self.roomid}")["data"]
+        try:
+            self.send_danmu_block=int(d["property"]["danmu"]["length"])
+        except(KeyError,ValueError):
+            log.warning("设置弹幕分块长度失败",exc_info=True)
+            if self.debug:
+                self.p("无法设置弹幕分块长度")
+        return d
+
 class LiveTools(ToolBase):
     """开关播"""
 
@@ -377,5 +392,5 @@ class LiveReplay(ToolBase):
         })
         return self.get_rest_data("发布直播回放片段","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorPublishVideoSlice",b)["data"]
 
-class BiliLiveTools(DanmuTools,LiveTools,LiveDataTools,RoomTools,LiveReplay):
+class BiliLiveTools(DanmuTools,SpectatorTools,LiveTools,LiveDataTools,RoomTools,LiveReplay):
     """全部工具"""
