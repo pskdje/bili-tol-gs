@@ -2,4 +2,4 @@
 
 lang: zh-CN
 
-remote_theme: pages-theme/primer
+remote_theme: pages-theme/primer@v0.6.0
