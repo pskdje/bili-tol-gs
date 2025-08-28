@@ -372,6 +372,7 @@ class ConditionsFrequentCmdHandle(BLMColor):
         "WIDGET_BANNER":"小部件",
         "LIVE_MULTI_VIEW_CHANGE":"多个直播视角信息更新",
         "DM_INTERACTION":"交互合并",
+        "UNIVERSAL_EVENT_GIFT":"连线礼物累计变化",
     })
 
     clr_dm_inter_task:asyncio.Task=None
@@ -461,6 +462,16 @@ class ConditionsFrequentCmdHandle(BLMColor):
         else:
             log.debug(f"未知的交互合并类型: {t}")
             raise SavePack("交互合并类型")
+    def l_UNIVERSAL_EVENT_GIFT(s,p):
+        """连线礼物累计变化信息"""
+        if s.args.no_UNIVERSAL_EVENT_GIFT:return
+        n=p["data"]["info"]
+        s.pct("信息",f"{TVER}(V1){CD}","连线礼物累计变化",f"样式id:{TSTR}{n['interact_template']['layout_id']}{CD},模板id:{TSTR}{n['interact_template']['template_id']}{CD}")
+    def l_UNIVERSAL_EVENT_GIFT_V2(s,p):
+        """连线礼物累计变化信息V2"""
+        if s.args.no_UNIVERSAL_EVENT_GIFT:return
+        d=p["data"]
+        s.pct("信息",f"{TVER}(V2){CD}","连线礼物累计变化",f"连线主播:len({len(d['members'])})")
 
 class RareCmdHandle(BLMColor):
     """低频少见特定条件的数据包处理"""
@@ -910,6 +921,9 @@ class PKCmdHandle(BLMColor):
     def l_PK_BATTLE_VIDEO_PUNISH_END(s,p):
         """同上，少了data部分"""
         s.pct("PK","惩罚时间结束",s.pk_id_status(p))
+    def l_PK_INFO(s,p):
+        """PK信息"""
+        s.pct("PK",f"{DI}服务器下发PK信息{EI}")
 
 class ModuleAllCmdHandle(CoreCmdHandle,FrequentCmdHandle,ConditionsFrequentCmdHandle,RareCmdHandle,PKCmdHandle):
     """该模块全部cmd的集合"""

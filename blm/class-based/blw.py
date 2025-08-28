@@ -142,10 +142,12 @@ def error(v:dict[Any]=None,d:Any=None)->None:
             print("错误信息已存储至",str(fp))
     cumulative_error_count+=1
 
-def pr(d:Any)->Any:# 打印并返回输入的值。[用于调试]
+def pr(d:Any)->Any:
+    """打印并返回输入的值。[用于调试]"""
     print(d)
     return d
-def bst(b:bytes,sep:str=" ")->str:# 将字节串处理成16进制内容的字符串
+def bst(b:bytes,sep:str=" ")->str:
+    """将字节串处理成16进制内容的字符串"""
     t=""
     x=0
     e=len(b)
@@ -155,7 +157,7 @@ def bst(b:bytes,sep:str=" ")->str:# 将字节串处理成16进制内容的字符
         if x<e: t+=sep
     return t
 
-def res_log(res:requests.Response,stacklevel=2)->None:
+def res_log(res:requests.Response,stacklevel:int=2)->None:
     """记录响应数据日志
     res: requests库的响应对象或类似格式的对象
     stacklevel: 日志内要跳过的堆栈数，不可少于2
@@ -650,7 +652,9 @@ class BiliLiveWS:
         img_url:str=w["img_url"]
         sub_url:str=w["sub_url"]
         self.wbi_imgKey:str=img_url.rsplit("/",1)[1].split(".")[0]
+        """wbi 签名的 imgKey"""
         self.wbi_subKey:str=sub_url.rsplit("/",1)[1].split(".")[0]
+        """wbi 签名的 subKey"""
         if d["isLogin"]==True:
             self.uid=d["mid"]
         return r

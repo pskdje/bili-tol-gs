@@ -390,6 +390,9 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
     def l_PK_BATTLE_VIDEO_PUNISH_END(s,p):
         """同上，少了data部分"""
         s.pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    def l_PK_INFO(s,p):
+        """PK信息"""
+        s.pct("PK","服务器下发PK信息")
     def l_MESSAGEBOX_USER_GAIN_MEDAL(s,p):
         """获得粉丝勋章"""
         d=p["data"]
