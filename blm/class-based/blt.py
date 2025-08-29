@@ -376,7 +376,7 @@ class LiveReplay(ToolBase):
         """获取直播会话数据"""
         return self.get_rest_data("获取直播会话数据",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetLiveSessionData?live_key={live_key}&start_tm={start_tm}&end_tm={end_tm}")["data"]
 
-    def publish_video_slice(self,live_key:str,start_ts:int,end_ts:int,av_title:str,av_cover:str="https://i0.hdslb.com/bfs/live/59fc254c1f51a962dbf69ae85e4920f2f6fb8dcd.png",av_highlight:int=0,with_subtitle:int=0,with_danmaku:int=0)->dict[str,int]:
+    def publish_video_slice(self,live_key:str,start_ts:int,end_ts:int,av_title:str,av_cover:str="https://i0.hdslb.com/bfs/live/59fc254c1f51a962dbf69ae85e4920f2f6fb8dcd.png",av_highlight:int=0,with_subtitle:int=0,with_danmaku:int=0,with_reserve:int=0,av_speed:str="")->dict[str,int]:
         """发布回放片段
         从av_title参数开始，建议使用关键字参数
         参数解释见[BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/live_replay.md#%E6%8A%95%E7%A8%BF%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE%E7%89%87%E6%AE%B5)"""
@@ -389,6 +389,8 @@ class LiveReplay(ToolBase):
             "av_highlight":av_highlight,
             "with_subtitle":with_subtitle,
             "with_danmaku":with_danmaku,
+            "with_reserve":with_reserve,
+            "av_speed":av_speed,
         })
         return self.get_rest_data("发布直播回放片段","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorPublishVideoSlice",b)["data"]
 

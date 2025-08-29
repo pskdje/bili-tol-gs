@@ -16,6 +16,8 @@
 
 ## 依赖
 
+无法保证依赖对所有的架构逻辑有效，之后可能会删除该部分。
+
 ### 必须
 
 `requests`: 网络请求
@@ -27,6 +29,10 @@
 ### 可选
 
 `brotli`: 数据解压
+
+## 文档
+
+现已添加部分文档，见[docs/blm](../docs/blm/index.md)（[线上页面](https://pskdje.github.io/bili-tol-gs/blm/)）
 
 ## 文件夹/文件
 
