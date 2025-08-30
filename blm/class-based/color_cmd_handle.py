@@ -449,7 +449,13 @@ class ConditionsFrequentCmdHandle(BLMColor):
         h="交互合并"
         n=json.loads(d["data"])
         t=d["type"]
-        if t==102:# 弹幕
+        if t==101:# 投票
+            if s.dm_inter_min(d["id"],n["cnt"]):return
+            tp=""
+            for o in n["options"]:
+                tp+=f" {TSTR}{o['desc']}{TNUM} ×{o['cnt']}{CD}({round(o['percent'],4)})"
+            s.pct(h,"投票",f"{TSTR}{n['question']}{CD}:",tp)
+        elif t==102:# 弹幕
             for c in n["combo"]:
                 if s.dm_inter_min(c["id"],c["cnt"]):return
                 s.pct(h,f"{C_10}{c['guide']}{C_07}",c["content"],TNUM+"×"+str(c["cnt"]))

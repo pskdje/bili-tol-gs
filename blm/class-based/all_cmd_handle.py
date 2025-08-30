@@ -330,7 +330,9 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         h="交互合并"
         n=json.loads(d["data"])
         t=d["type"]
-        if t==102:# 弹幕
+        if t==101:# 投票
+            s.pct(h,"投票",n["question"],f"有{n['cnt']}人参与")
+        elif t==102:# 弹幕
             for c in n["combo"]:
                 s.pct(h,c["guide"],c["content"],"×"+str(c["cnt"]))
         elif t==104:# 送礼
