@@ -454,6 +454,8 @@ class ConditionsFrequentCmdHandle(BLMColor):
             tp=""
             for o in n["options"]:
                 tp+=f" {TSTR}{o['desc']}{TNUM} ×{o['cnt']}{CD}({round(o['percent'],4)})"
+            if n["audit_reason"]:
+                tp+=f" {TKEY}审核结果: {TSTR}{n['audit_reason']}{CD}"
             s.pct(h,"投票",f"{TSTR}{n['question']}{CD}:",tp)
         elif t==102:# 弹幕
             for c in n["combo"]:

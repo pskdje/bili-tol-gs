@@ -488,6 +488,10 @@ Python:
 
 *参数* `with_danmaku` : 是否携带弹幕
 
+*参数* `with_reserve` : 是否携带下场直播提醒
+
+*参数* `av_speed` : 使用倍速投稿，格式 `速率 + "x"`
+
 ### 类 `BiliLiveTools`
 
 本模块提供的全部工具集合。
