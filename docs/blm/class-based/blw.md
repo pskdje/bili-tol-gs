@@ -667,7 +667,9 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 将会读取 `save_cmd` 、 `count_cmd` 、 `only_count_cmd` 并执行对应操作。
 
-当找到cmd对应的处理函数时将调用该函数处理cmd。cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特殊字符可考虑实现 `__getattr__` 方法来处理。
+cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特殊字符可考虑实现 `__getattr__` 方法来处理。
+
+当找到cmd对应的处理函数时将调用该函数处理cmd，传递一个数据包参数。数据包为 `pack` 参数输入的内容。
 
 若未找到cmd对应的处理函数将执行未支持的操作，可使用 `no_run_enable_cmd` 属性取消该回退操作。
 
