@@ -1,17 +1,22 @@
 <!DOCTYPE html>
-	<html lang="{{ page.lang | default: site.lang | default: "en-US" }}">
+	<html lang="{{ page.lang | default: site.lang | default: 'en-US' }}">
 	<head>
 		<meta charset="UTF-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 		<script src="/js/script.js"></script>
+		<script>DEBUG[0]=false;// 文档页面不启用调试</script>
 		<link rel="stylesheet" href="/docs/doc.css" />
 		<script src="/docs/doc.js"></script>
 
 		{% seo %}
-		<link rel="stylesheet" href="{{ "/assets/css/style.css?v=" | append: site.github.build_revision | relative_url }}" />
+		<link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}" />
 		{% include head-custom.html %}
 	</head>
 	<body>
+		<header class="mx-2 mb-1 pb-1 d-flex">
+			<div class="d-inline-block flex-auto text-left"><a href="{{ site.github.baseurl }}" title="文档首页">{{ site.github.repository_name }}</a></div>
+			<div class="d-inline-block flex-auto text-right"><a href="{{ site.github.repository_url }}" title="仓库">Github</a></div>
+		</header>
 		<main class="container-lg px-3 my-5 markdown-body">
 			<!-- page top none -->
 
@@ -19,7 +24,7 @@
 
 			{% if site.github.private != true and site.github.license %}
 			<div class="footer border-top border-gray-light mt-5 pt-3 text-right text-gray">
-				该页面是开源的，{% github_edit_link "编辑此页" %}。
+				开源协议 <a href="{{ site.github.license.url }}">{{ site.github.license.name }}</a>
 			</div>
 		{% endif %}
 		</main>
