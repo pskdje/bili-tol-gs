@@ -86,7 +86,7 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
 class StartAllCmdHandle(all_cmd_handle.BiliLiveAllCmdHandle,S):
     """启动all"""
 
-class StartColorCmdHandle(color_cmd_handle.AllCmdHandle,S):
+class StartColorCmdHandle(color_cmd_handle.AllCmdHandle,all_cmd_handle.BiliLiveAllCmdHandle,S):
     """启动color"""
 
     add_args= S.add_args + color_cmd_handle.AllCmdHandle.add_args

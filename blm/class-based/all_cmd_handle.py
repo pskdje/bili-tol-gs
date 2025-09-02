@@ -392,6 +392,9 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
     def l_PK_BATTLE_VIDEO_PUNISH_END(s,p):
         """同上，少了data部分"""
         s.pct("PK","惩罚时间结束",f"id:{p['pk_id']}",f"s:{p['pk_status']}")
+    def l_PK_BATTLE_ENTRANCE(s,p):
+        """PK入口"""
+        s.pct("PK","是否开启:",p["data"]["is_open"])
     def l_PK_INFO(s,p):
         """PK信息"""
         s.pct("PK","服务器下发PK信息")
@@ -570,6 +573,12 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         d=p["data"]
         for i in d["data"]:
             s.pct("事件","剪辑片段数据","开始于:",i["start_time"],",结束于:",i["end_time"],",片段视频流:",i["stream"])
+    def l_INTERACTIVE_USER(s,p):
+        """交互提示?"""
+        s.pct("提示","用户交互",p["data"]["value"]["dm_msg"])
+    def l_PANEL_INTERACTIVE_NOTIFY_CHANGE(s,p):
+        """面板交互通知更改?"""
+        s.pct("提示","玩法交互通知",p["data"]["text"])
     def l_FANS_CLUB_POKE_GIFT_NOTICE(s,p):
         """粉丝团戳一戳要礼通知"""
         s.pct("提示",p["data"]["text"])
