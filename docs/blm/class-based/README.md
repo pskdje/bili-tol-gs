@@ -15,3 +15,5 @@
 [color_cmd_handle.py](color_cmd_handle.md) 带有颜色的cmd处理
 
 [cmd_pb/protobuf_cmd_handle.py](protobuf_cmd_handle.md) protobuf数据处理
+
+[main.py](main.md) 启动入口
