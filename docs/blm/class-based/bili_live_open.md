@@ -27,9 +27,7 @@ Python:
 
 文件允许直接在命令行中启动，但没有实现cmd处理。
 
-```shell
-python bili_live_open.py --BLO-config app.json XXXXXXXX
-```
+<pre><code class="language-shell">python bili_live_open.py --BLO-config app.json XXXXXXXX</code></pre>
 
 使用 `-h` 或 `--help` 获取命令行参数提示。
 
@@ -106,8 +104,7 @@ python bili_live_open.py --BLO-config app.json XXXXXXXX
 <details>
 <summary>查看响应标注</summary>
 
-```jsonc
-{
+<pre><code class="language-json">{
 	"code":0,// 返回值
 	"message":"0",// 错误信息
 	"request_id":"10",// 请求id
@@ -133,8 +130,7 @@ python bili_live_open.py --BLO-config app.json XXXXXXXX
 			]
 		}
 	}
-}
-```
+}</code></pre>
 
 </details>
 
@@ -245,3 +241,16 @@ python bili_live_open.py --BLO-config app.json XXXXXXXX
 ## 某时间的源代码
 
 <img src="https://i0.hdslb.com/bfs/new_dyn/ff5e4d7dd9f7e664424fe75ee7714c7c438160221.png" alt="source image" referrerpolicy="no-referrer" />
+
+<script>// 为默认jekyll不处理HTML标签内的内容准备的。 <!-- 
+	(()=>{
+		let cs=document.createElement("link"),js=document.createElement("script"),dark=false;
+		if(config.storage.colorScheme==="dark") dark=true;
+		else if(config.storage.colorScheme==="auto"&&docsScript.pageData.isDark) dark=true;
+		cs.rel="stylesheet";
+		cs.href=`https://unpkg.com/@highlightjs/cdn-assets/styles/github${dark?"-dark":""}.min.css`;
+		js.src="https://unpkg.com/@highlightjs/cdn-assets/highlight.min.js";
+		js.onload=()=>{hljs.highlightAll()};
+		document.head.append(cs,js);
+	})();
+// --></script>
