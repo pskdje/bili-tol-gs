@@ -149,11 +149,31 @@ wbi重排映射表。
 
 **继承:** `Exception`
 
+### 异常 `DataError`
+
+数据因为某些原因出现错误或不符合条件时抛出。
+
+若某些情况可用内置异常表示的话最好还是抛出内置异常。
+
+**继承:** `BLWException`
+
+#### 属性 `DataError.datas`
+
+构造函数的所有关键字字典，由__init__初始化。
+
+#### 方法 `DataError.__init__`
+
+记录数据异常，将所有位置参数传递给基类的初始化函数，将所有关键字参数保存到 `datas` 属性。
+
+*剩余位置参数* `args` : 异常提示信息
+
+**剩余关键字参数* `kw` : 其它信息
+
 ### 异常 `GetDataError`
 
 获取数据时出现的错误，包括网络错误和无效数据。
 
-**继承:** `BLWException`
+**继承:** `DataError`
 
 ### 异常 `WSClientError`
 
@@ -485,11 +505,29 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 *参数* `json` : 要发送的数据，类型JSON
 
+*参数* `headers` : 本次请求要合并一起使用的请求头，通过拷贝[headers](#属性-bililivewsheaders)属性后合并得出要使用的请求头
+
+*参数* `cookies` : 本次请求要合并一起使用的cookie，通过拷贝[cookies](#属性-bililivewscookies)属性后合并得出要使用的cookie
+
 *参数* `err_code_raise` : 若为真值，响应内容的code不为0时将抛出错误，最好使用位置参数传递。
 
 **返回值:** 经过json解析后的响应内容
 
-**异常:** `TypeError` , `KeyboardInterrupt` , `GetDataError`
+**异常:** `TypeError` , `KeyboardInterrupt` , `DataError` , `GetDataError`
+
+当抛出 `DataError` 时，将保留当前合并操作的headers和cookies
+
+当抛出 `GetDataError` 时，将保留一些可供程序读取的请求状态参数：
+
+| 属性 | 在哪个type存在 | 描述 | 备注 |
+| ---- | ---- | ---- | ---- |
+| type | 所有 | 提示异常源 | 部分异常源可能除了 `type` 属性就无其它属性 |
+| status_code | `response` | 响应状态码 |  |
+| text | `json` | json解析失败的原始文本 |  |
+| code | `api` | REST API的code值 | 通常为非 `0` 值（若为0通常不会抛出错误） |
+| message | `api` | 错误提示 | 提示的详细程度取决于服务器 |
+
+注意：这些状态参数并不详细，想要详细信息请[启用日志](#函数-set_log)或者尝试复现错误。
 
 #### 方法 `BiliLiveWS.wbi_encode`
 

@@ -173,7 +173,16 @@ def res_log(res:requests.Response,stacklevel:int=2)->None:
 class BLWException(Exception):
     """哔哩哔哩直播信息流根异常"""
 
-class GetDataError(BLWException):
+class DataError(BLWException):
+    """数据异常"""
+
+    def __init__(self,*args:object,**kw:object):
+        """记录数据异常，通过关键字参数保留出错时的对象引用"""
+        super().__init__(*args)
+        self.datas=kw
+        """保留输入的关键字参数"""
+
+class GetDataError(DataError):
     """获取数据时出现的错误，包括网络错误和无效数据"""
 
 class WSClientError(BLWException):
@@ -486,54 +495,63 @@ class BiliLiveWS:
         """分割数据包时出现错误的提示信息，将传入原始字节串"""
         s.p("无法解析数据")
 
-    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,json:dict|list=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
+    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,json:dict|list=None,headers:dict|None=None,cookies:dict|None=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
         """获取API数据
         任意发送数据参数不为None时将使用POST请求
         tip: 操作提示，用于生成错误和日志
         url: 请求的URL
         data: 要发送的数据，类型urlencode或其它（需自定义请求头的内容类型）
         json: 要发送的数据，类型JSON
+        headers: 要使用的请求头，与实例的请求头容纳合并出本次请求头
+        cookies: 要使用的cookie，与实例的cookie合并出本次cookie
         err_code_raise: 若为真值，响应内容的code不为0时将抛出错误
         返回值: 经过json解析后的响应内容
         """
         if not isinstance(tip,str):
             raise TypeError("tip需要为str")
         rn=tip
-        headers=self.headers
-        cookies=self.cookies
-        log.debug(f"""[请求]{url}\nheaders: {headers}\ncookies: {cookies}\ndata: {data}\njson: {json}""",stacklevel=2)
+        rqh=self.headers.copy()
+        cks=self.cookies.copy()
+        try:
+            if headers is not None:
+                rqh|=headers
+            if cookies is not None:
+                cks|=cookies
+        except:
+            raise DataError("提供的headers或cookies存在问题",current_headers=rqh,current_cookies=cks)
+        log.debug(f"""[请求]{url}\nheaders: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}""",stacklevel=2)
         try:
             if data:
                 r=requests.post(url,
                     data=data,
-                    headers=headers,
-                    cookies=cookies
+                    headers=rqh,
+                    cookies=cks
                 )
             elif json:
                 r=requests.post(url,
                     json=json,
-                    headers=headers,
-                    cookies=cookies
+                    headers=rqh,
+                    cookies=cks
                 )
             else:
                 r=requests.get(url,
-                    headers=headers,
-                    cookies=cookies
+                    headers=rqh,
+                    cookies=cks
                 )
         except KeyboardInterrupt:
             log.info(f"{rn}操作被中断")
             raise
         except:
             log.exception(f"{rn}时出现错误")
-            raise GetDataError(f"{rn}失败")
+            raise GetDataError(f"{rn}失败",type="request")
         res_log(r,3)
         if r.status_code!=200:
-            raise GetDataError(f"{rn}响应的状态码为{r.status_code}")
+            raise GetDataError(f"{rn}响应的状态码为{r.status_code}",type="response",status_code=r.status_code)
         try:
             d=r.json()
         except:
             log.exception(f"{rn}数据解析失败")
-            raise GetDataError(f"{rn}json数据解析失败")
+            raise GetDataError(f"{rn}json数据解析失败",type="json",text=r.text)
         if err_code_raise and d["code"]!=0:
             if "message" in d:
                 msg=d["message"]
@@ -542,7 +560,7 @@ class BiliLiveWS:
             else:
                 msg="?"
             log.warning(f"{rn}的code不为0，信息: {d['code']} - {msg}")
-            raise GetDataError(f"{rn}的code为{d['code']}，信息: {msg}")
+            raise GetDataError(f"{rn}的code为{d['code']}，信息: {msg}",type="api",code=d["code"],message=msg)
         return d
 
     def wbi_encode(self,params:dict)->argparse.Namespace:

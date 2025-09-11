@@ -492,8 +492,48 @@ Python:
 
 *参数* `av_speed` : 使用倍速投稿，格式 `速率 + "x"`
 
+### 类 `LiveVote`
+
+直播投票。
+
+**继承:** `ToolBase`
+
+#### 方法 `LiveVote.live_votePanel`
+
+查询直播投票信息。
+
+读取 `roomid` 属性。
+
+#### 方法 `LiveVote.live_voteHistory`
+
+查询直播投票历史。
+
+读取 `roomid` 属性。
+
+#### 方法 `LiveVote.live_createVote`
+
+创建直播投票。
+
+*参数* `duration` : 投票持续时长(单位:分钟)
+
+*参数* `question` : 投票问题
+
+*参数* `options_a` : 投票选项a
+
+*参数* `options_b` : 投票选项b
+
+*参数* `template_id` : 投票模板id
+
+#### 方法 `LiveVote.live_terminateVote`
+
+中断直播投票。
+
+读取 `roomid` 属性。
+
+*参数* `vote_id` : 投票互动id
+
 ### 类 `BiliLiveTools`
 
 本模块提供的全部工具集合。
 
-**继承:** `DanmuTools,SpectatorTools,LiveTools,LiveDataTools,RoomTools,LiveReplay`
+**继承:** 所有工具类

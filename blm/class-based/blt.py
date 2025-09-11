@@ -394,5 +394,36 @@ class LiveReplay(ToolBase):
         })
         return self.get_rest_data("发布直播回放片段","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorPublishVideoSlice",b)["data"]
 
-class BiliLiveTools(DanmuTools,SpectatorTools,LiveTools,LiveDataTools,RoomTools,LiveReplay):
+class LiveVote(ToolBase):
+    """直播投票"""
+
+    def live_votePanel(self)->dict|None:
+        """查询直播投票信息"""
+        return self.get_rest_data("查询投票信息",f"https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/votePanel?room_id={self.roomid}")["data"]
+
+    def live_voteHistory(self)->dict:
+        """查询直播投票历史"""
+        return self.get_rest_data("查询投票历史",f"https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/voteHistory?room_id={self.roomid}")["data"]
+
+    def live_createVote(self,duration:int,question:str,options_a:str,options_b:str,template_id:int=0)->dict:
+        """创建直播投票"""
+        b={
+            "duration":duration,
+            "question":question,
+            "options_a":options_a,
+            "options_b":options_b,
+        }
+        if template_id:
+            b["template_id"]=template_id
+        return self.get_rest_data("创建直播投票","https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/createVote",self.add_csrf(b))["data"]
+
+    def live_terminateVote(self,vote_id:int)->dict:
+        """中断直播投票"""
+        b=self.add_csrf({
+            "interaction_id":vote_id,
+            "room_id":self.roomid,
+        })
+        return self.get_rest_data("中断直播投票","https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/terminateVote",b)
+
+class BiliLiveTools(DanmuTools,SpectatorTools,LiveTools,LiveDataTools,RoomTools,LiveReplay,LiveVote):
     """全部工具"""
