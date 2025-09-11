@@ -17,3 +17,5 @@
 [cmd_pb/protobuf_cmd_handle.py](protobuf_cmd_handle.md) protobuf数据处理
 
 [main.py](main.md) 启动入口
+
+[bili_live_open.py](bili_live_open.md) 基于直播开放平台逻辑框架

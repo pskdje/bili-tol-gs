@@ -49,3 +49,7 @@
 ### [cmd_pb/protobuf_cmd_handle.py]
 
 提供部分使用protobuf编码的数据处理。
+
+### [bili_live_open.py]
+
+基于直播开放平台的信息流框架。
