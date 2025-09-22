@@ -33,6 +33,18 @@ Python:
 
 前往[play-live.bilibili.com](https://play-live.bilibili.com/)或[开播设置](https://link.bilibili.com/#/my-room/start-live)获取主播身份码。
 
+使用时必须传入专用配置文件，除非使用某些手段提供了必要属性。
+
+## 专用配置文件格式
+
+文件类型: JSON (application/json)
+
+<pre><code class="language-json">{
+	"accessKeyId":"xxXXXxxXxaaa",// 直播开放平台开发者 access key id
+	"accessKeySecret":"xXXXXxxXxxxXXXXXXxbbb",// 直播开放平台开发者 access key secret
+	"appID":0 // 直播开放平台项目id
+}</code></pre>
+
 ## 接口
 
 为节省文档维护工作量，接口的类型标注可能会省略，参见源代码获取类型标注。
@@ -242,15 +254,19 @@ Python:
 
 <img src="https://i0.hdslb.com/bfs/new_dyn/ff5e4d7dd9f7e664424fe75ee7714c7c438160221.png" alt="source image" referrerpolicy="no-referrer" />
 
+<hr id="markdown-html-space" />
+
 <script>// 为默认jekyll不处理HTML标签内的内容准备的。 <!-- 
 	(()=>{
+		let hr=document.getElementById("markdown-html-space");
+		if(hr) hr.remove();
 		let cs=document.createElement("link"),js=document.createElement("script"),dark=false;
 		if(config.storage.colorScheme==="dark") dark=true;
 		else if(config.storage.colorScheme==="auto"&&docsScript.pageData.isDark) dark=true;
 		cs.rel="stylesheet";
 		cs.href=`https://unpkg.com/@highlightjs/cdn-assets/styles/github${dark?"-dark":""}.min.css`;
 		js.src="https://unpkg.com/@highlightjs/cdn-assets/highlight.min.js";
-		js.onload=()=>{hljs.highlightAll()};
+		js.onload=()=>{js.onload=null;hljs.highlightAll()};
 		document.head.append(cs,js);
 	})();
 // --></script>
