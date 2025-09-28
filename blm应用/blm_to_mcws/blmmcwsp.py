@@ -158,21 +158,26 @@ class MCWSP(BiliLiveWS,MinecraftWS):
 
     async def mcws_join_event(self,ws:ServerConnection):
         log.info(f"{ws.remote_address} 加入服务器")
+        async def send(msg):
+            """发送提示"""
+            return await ws.send(json.dumps(self.create_commandRequest(f"say {msg}")))
         async def close(msg):
+            """发送关闭提示并关闭连接"""
             self.p(f"{ws.remote_address} 加入服务器失败:",msg)
-            await ws.send(json.dumps(self.create_commandRequest(f"say {MCH.MF_o}加入失败:{MCH.MF_r}{MCH.MC_m} {msg}")))
+            await send(f"{MCH.MF_o}{MCH.MC_m}加入失败:{MCH.MF_r} {msg}")
             await asyncio.sleep(1)
             await ws.send(json.dumps(self.create_close_command()))
             await ws.close()
         p=urlparse(ws.request.path).path.split("/",2)
         if len(p)<2:
-            await ws.send(json.dumps(self.create_commandRequest(f"请在URL的后面接上直播间ID，详细信息请查看文档。")))
+            await send(f"请在URL的后面接上直播间ID，详细信息请查看文档。")
             return await close("未加入直播间")
         try:
             r=int(p[1])
         except:
             return await close("无效的直播间ID")
         if r not in self.livecm:
+            await send("连接直播间…")
             b=await self.run_blm(r)
             if b is None:
                 return await close(f"连接直播间{MCH.TRMI} {r} {MCH.MF_r}信息流失败")
