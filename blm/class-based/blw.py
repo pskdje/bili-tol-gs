@@ -54,7 +54,7 @@ __all__:list[str]=[
     "MsgWSInfo",
     "BiliLiveWS",
 ]
-__version__:str="2"
+__version__:str="3"
 DEBUG:bool=False
 TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
 UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
@@ -368,6 +368,10 @@ class CookiesAgent:
 
     def keys(self):
         return self.cookies.keys()
+    def values(self):
+        return self.cookies.values()
+    def items(self):
+        return self.cookies.items()
 
 class MsgWSInfo:
     """直播信息流的地址信息容纳"""
@@ -412,6 +416,8 @@ class BiliLiveWS:
     """循环发送心跳包任务暂存"""
     args:argparse.Namespace=None
     """命令行参数存储"""
+    request_timeout:float|tuple=30
+    """默认请求超时时间"""
     no_run_enable_cmd:bool=False
     """不运行不支持某个cmd的回退操作"""
     cmd_args:list=[]
@@ -436,19 +442,29 @@ class BiliLiveWS:
         """要被计数的cmd列表"""
         self.pack_count:dict[str,int]={}
         """cmd计数容纳"""
-        self.headers:dict[str,str]={
-            "Origin":"https://live.bilibili.com/",
-            "User-Agent":self.UA
-        }
-        """HTTP请求头容纳"""
-        self.cookies:dict[str,str]={}
-        """Cookie容纳"""
+        rsess=requests.Session()
+        self.requests_session=rsess
+        """网络会话"""
+        rsess.headers["User-Agent"]=self.UA
         # 已在类级别进行注释，不重复注释
         self.uid:int=0
         self.hpst=None
     def __repr__(self)->str:
         """对象概述"""
         return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}>"
+    def __del__(self)->None:
+        """清除"""
+        self.requests_session.close()
+        self.close_hpst()
+
+    @property
+    def headers(self):
+        """获取会话的请求头对象"""
+        return self.requests_session.headers
+    @property
+    def cookies(self):
+        """获取会话的cookie对象"""
+        return self.requests_session.cookies
 
     def error(self,d:Any=None,**v:Any)->None:
         """记录异常，附带该类的部分变量"""
@@ -495,52 +511,60 @@ class BiliLiveWS:
         """分割数据包时出现错误的提示信息，将传入原始字节串"""
         s.p("无法解析数据")
 
-    def get_rest_data(self,tip:str,url:str,data:dict|bytes|None=None,json:dict|list=None,headers:dict|None=None,cookies:dict|None=None,err_code_raise:bool=True)->dict[str,str|int|dict]:
+    def get_rest_data(self,tip:str,url:str,
+        data:dict|bytes|None=None,json:dict|list=None,
+        headers:dict|None=None,cookies:dict|None=None,
+        timeout:float|tuple[float,float]=0,
+        err_code_raise:bool=True
+    )->dict[str,str|int|dict]:
         """获取API数据
         任意发送数据参数不为None时将使用POST请求
         tip: 操作提示，用于生成错误和日志
         url: 请求的URL
         data: 要发送的数据，类型urlencode或其它（需自定义请求头的内容类型）
         json: 要发送的数据，类型JSON
-        headers: 要使用的请求头，与实例的请求头容纳合并出本次请求头
-        cookies: 要使用的cookie，与实例的cookie合并出本次cookie
+        headers: 要额外使用的请求头
+        cookies: 要额外使用的cookie
+        timeout: 指定本次请求的超时时间
         err_code_raise: 若为真值，响应内容的code不为0时将抛出错误
         返回值: 经过json解析后的响应内容
         """
         if not isinstance(tip,str):
             raise TypeError("tip需要为str")
         rn=tip
-        rqh=self.headers.copy()
-        cks=self.cookies.copy()
-        try:
-            if headers is not None:
-                rqh|=headers
-            if cookies is not None:
-                cks|=cookies
-        except:
-            raise DataError("提供的headers或cookies存在问题",current_headers=rqh,current_cookies=cks)
-        log.debug(f"""[请求]{url}\nheaders: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}""",stacklevel=2)
-        try:
+        rsess=self.requests_session
+        rqh=headers
+        cks=cookies
+        rto=self.request_timeout
+        if timeout>0:
+            rto=timeout
+        log.debug(f"""[请求]{url}
+headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
+已有请求头: {rsess.headers}\n已有cookie: {rsess.cookies}""",stacklevel=2)
+        reqkwa={
+            "headers":rqh,
+            "cookies":cks,
+            "timeout":rto,
+        }
+        try:# 执行请求
             if data:
-                r=requests.post(url,
+                r=rsess.post(url,
                     data=data,
-                    headers=rqh,
-                    cookies=cks
+                    **reqkwa
                 )
             elif json:
-                r=requests.post(url,
+                r=rsess.post(url,
                     json=json,
-                    headers=rqh,
-                    cookies=cks
+                    **reqkwa
                 )
             else:
-                r=requests.get(url,
-                    headers=rqh,
-                    cookies=cks
-                )
+                r=rsess.get(url,**reqkwa)
         except KeyboardInterrupt:
             log.info(f"{rn}操作被中断")
             raise
+        except requests.Timeout as e:
+            log.warning(f"{rn}请求超时",exc_info=True)
+            raise GetDataError(f"{rn}超时: {e}",type="timeout")
         except:
             log.exception(f"{rn}时出现错误")
             raise GetDataError(f"{rn}失败",type="request")
@@ -578,10 +602,14 @@ class BiliLiveWS:
         warnings.warn("不建议通过调用类的from_list_add_args方法，请改为调用blw对应名称的函数",category=PendingDeprecationWarning)
         return from_list_add_args(argobj,arg_list)
 
-    def get_Cookie(self,s:str)->CookiesAgent|None:
+    def get_Cookie(self,s:str)->CookiesAgent|Any|None:
         """获取Cookie数据"""
-        if hasattr(self,"read_cookie"):
-            return CookiesAgent(self.read_cookie(s))
+        if hasattr(self,"read_cookie"):# 当存在这个属性时委托给它处理
+            try:
+                return self.read_cookie(s)# 只有返回 CookiesAgent 类才会被默认启动逻辑所接受
+            except(TypeError,ValueError):
+                if DEBUG: self.error("read_cookie 抛出会被argparse模块处理的内置异常")
+                raise
         p=Path(s)
         c={}
         if p.is_file():
@@ -590,18 +618,17 @@ class BiliLiveWS:
             fts=p.read_text().splitlines()
             for ft in fts:
                 ftt=ft.split("\t")
-                if len(fts)==1 and len(ftt)==1:
+                if len(fts)==1 and len(ftt)==1:# 只有一行将视作cookie头的内容
                     c.update(split_kv_cookie(ftt[0]))
                     break
-                if ftt[0]!=".bilibili.com":
-                    continue
-                c[ftt[-2]]=ftt[-1]
+                if ftt[0]!=".bilibili.com":continue# 排除其它域名
+                c[ftt[-2]]=ftt[-1]# 将倒数第2项视作key，倒数第1项视作value
             if not len(fts):
                 raise ValueError("这个文件没有内容")
             if not len(c):
                 self.p("[警告] 无Cookie数据")
                 return None
-        else:
+        else:# 若不是有效文件则将所有输入作为cookie头内容处理
             c.update(split_kv_cookie(s))
         return CookiesAgent(c)
     def build_argparser(self,
@@ -903,7 +930,7 @@ class BiliLiveWS:
         log.debug(f"版本信息: {VERSIONINFO}")
         a=self.pararg()
         self.p("获取数据…")
-        if a.cookie:
+        if isinstance(a.cookie,CookiesAgent):
             self.cookies.update(a.cookie)
         if "buvid3" not in self.cookies:
             self.p("[警告]未提供键为buvid3的Cookie，可能会被风控。")

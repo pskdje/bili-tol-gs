@@ -3,7 +3,7 @@
 
 import blw
 import sys,time,re,argparse
-from blw import GetDataError,WSClientError,log
+from blw import GetDataError,WSClientError,CookiesAgent,log
 from collections.abc import Generator
 from typing import Any,Self
 
@@ -291,8 +291,9 @@ class BiliLiveMsg(BiliLiveExp):
         log.debug(f"版本信息: {blw.VERSIONINFO}")
         a=self.pararg()
         self.p("获取数据…")
-        if a.cookie:
-            self.cookies.update(a.cookie)
+        if isinstance(a.cookie,CookiesAgent):
+            for ck,cv in a.cookie.items():
+                self.cookies.set(ck,cv,domain=".bilibili.com")
         self.get_login_nav()
         if "buvid3" not in self.cookies:
             self.set_buvid3_4()

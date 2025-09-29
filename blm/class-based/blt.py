@@ -4,6 +4,7 @@
 
 import blw,blm
 import time,json,asyncio
+import http.cookiejar as cookiejar
 from pathlib import Path
 from typing import NamedTuple,Any,Self
 from blw import GetDataError,log
@@ -93,16 +94,19 @@ class LiveLink(NamedTuple):
 class ToolBase(blm.BiliLiveExp):
     """基本工具"""
 
-    def set_cookie(self,data:dict[str,str])->dict[str,str]:
-        """设置cookie，通过|=操作。若输入None将重新创建一个dict给cookies变量"""
+    def set_cookie(self,data:dict[str,str]|None)->str:
+        """设置cookie。若输入None将清除所有已存在的cookie"""
+        cks=self.cookies
         if data is None:
-            c={}
-            self.cookies=c
-            return c
-        if not isinstance(data,dict):
-            raise TypeError("输入的不是dict类型")
-        self.cookies|=data
-        return data
+            cks.clear()
+            return "clear"
+        if isinstance(data,dict):
+            for ck,cv in data.items():
+                if ck=="SESSDATA":
+                    cks.set(ck,cv,domain=".bilibili.com",secure=True)
+                    continue
+                cks.set(ck,cv,domain=".bilibili.com")
+            return "dict_to_cookie"
 
     def split_kv_cookie(self,data:str)->dict[str,str]:
         """从字符串获取cookie"""
@@ -118,6 +122,15 @@ class ToolBase(blm.BiliLiveExp):
             if m[0]==".bilibili.com":
                 c[m[-2]]=m[-1]
         return self.set_cookie(c)
+    def split_mozilla_cookie(self,path:str):
+        """处理 Mozilla cookies.txt 文件格式"""
+        cj=cookiejar.MozillaCookieJar()
+        try:
+            cj.load(path)
+        except cookiejar.LoadError:
+            return "LoadError"
+        else:
+            self.cookies.update(cj)
 
     def read_cookie(self,data:str)->dict[str,str]|None:
         """读取cookie"""

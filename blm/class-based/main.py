@@ -26,8 +26,9 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
             ma=[]
         a=self.pararg(ma)
         self.p("获取数据…")
-        if a.cookie:
-            self.cookies|=a.cookie
+        if isinstance(a.cookie,blw.CookiesAgent):
+            for ck,cv in a.cookie.items():
+                self.cookies.set(ck,cv,domain=".bilibili.com")
         try:
             self.get_login_nav()
             if "buvid3" not in self.cookies:
