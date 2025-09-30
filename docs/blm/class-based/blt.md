@@ -144,13 +144,13 @@ Python:
 
 #### 方法 `ToolBase.set_cookie`
 
-设置cookie，通过 `|=` 运算符操作。若输入 `None` 将重新创建一个 `dict` 给cookies变量。
+设置cookie。若输入 `None` 将清除所有已存在的cookie。
 
-*参数* `data` : 新的cookie字典或 `None`
+目前 `dict` 、 `http.cookiejar.CookieJar` 为设置cookie所支持的类型。
 
-**返回值:** 输入的cookie字典或新的 `dict` 对象
+*参数* `data` : 新的cookie对象或 `None`
 
-*可能抛出异常* `TypeError` : 输入的不是dict类型
+**返回值:** 代表操作结果的字符串
 
 #### 方法 `ToolBase.split_kv_cookie`
 
@@ -169,6 +169,18 @@ Python:
 *参数* `data` : 文件内容
 
 **返回值:** 解析后的cookie字典
+
+#### 方法 `ToolBase.split_file_cookie`
+
+处理存储在文件的cookie，需要提供[`http.cookiejar.FileCookieJar`](https://docs.python.org/zh-cn/3/library/http.cookiejar.html)的子类才能解析。
+
+该方法将会直接更新 `cookies` 属性所指向的cookies对象。
+
+*参数* `path` : 文件路径
+
+*参数* `cj` : FileCookieJar子类的类对象
+
+**返回值:** 代表操作结果的字符串
 
 #### 方法 `ToolBase.read_cookie`
 

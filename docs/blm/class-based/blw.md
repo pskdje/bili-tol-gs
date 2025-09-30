@@ -55,6 +55,7 @@ class cmd处理示例(blw.BiliLiveWS):# 继承基本组件
   - 调用 `run_blw_client` 运行信息流客户端
     - 调用后将会阻塞于此，直到信息流客户端退出
   - 调用 `print_cmd_count` 在特定参数下打印计数
+- 可参见blm.py的start方法重写实现
 
 ## 接口
 
@@ -307,7 +308,7 @@ blw ws 客户端异常。
 
 代理从参数输入的Cookie信息。
 
-支持 `__len__` 、 `__getitem__` 、 `__iter__` 、 `__contains__` 、 `key` 字典操作。
+支持 `__len__` 、 `__getitem__` 、 `__iter__` 、 `__contains__` 、 `key` 、 `values` 、 `items` 字典操作。
 
 更多操作请访问 `cookies` 属性。
 
@@ -323,7 +324,7 @@ blw ws 客户端异常。
 
 给出不清晰的Cookie信息。
 
-#### 属性 `cookies`
+#### 属性 `CookiesAgent.cookies`
 
 在初始化类时输入的cookie字典。
 
@@ -387,6 +388,10 @@ blw ws 客户端异常。
 
 命令行参数存储，初始值 `None` ，由[pararg](#方法-bililivewspararg)设置。
 
+#### 属性 `BiliLiveWS.request_timeout`
+
+默认请求超时时间，允许的类型为 `requests.request` 方法的 `timeout` 参数所允许的类型。初始值 `30` 。
+
 #### 属性 `BiliLiveWS.no_run_enable_cmd`
 
 不运行不支持某个cmd的回退操作，默认值 `False` ，由[pac_cmd_call](#方法-bililivewspac_cmd_call)使用。
@@ -399,7 +404,7 @@ blw ws 客户端异常。
 
 #### 属性 `BiliLiveWS.only_count_cmd`
 
-只计数cmd的列表，初始值 `[]` 。
+只计数cmd的列表，初始值 `[]` 。不建议直接操作该对象，应通过继承覆盖。
 
 #### 属性 `BiliLiveWS.save_cmd`
 
@@ -413,13 +418,9 @@ blw ws 客户端异常。
 
 cmd计数容纳，由__init__初始化为 `[]` 。
 
-#### 属性 `BiliLiveWS.headers`
+#### 属性 `BiliLiveWS.requests_session`
 
-HTTP请求头容纳，由__init__初始化为携带2个请求头的字典。
-
-#### 属性 `BiliLiveWS.cookies`
-
-Cookie容纳，由__init__初始化为 `{}` 。
+网络请求会话，由__init__初始化为 `requests.Session` 。
 
 #### 属性 `BiliLiveWS.wbi_imgKey`
 
@@ -433,6 +434,18 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 只读，返回blw的全局调试状态。
 
+#### 属性 `BiliLiveWS.headers`
+
+获取会话的请求头对象。
+
+只读，返回 `requests_session` 属性的 `headers` 。
+
+#### 属性 `BiliLiveWS.cookies`
+
+获取会话的cookie对象。
+
+只读，返回 `requests_session` 属性的 `cookies` 。
+
 #### 方法 `BiliLiveWS.__init__`
 
 初始化blw的一些必要变量。
@@ -440,6 +453,10 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 #### 方法 `BiliLiveWS.__repr__`
 
 返回对象概述，有类名、roomid、uid。
+
+#### 方法 `BiliLiveWS.__del__`
+
+关闭请求会话和调用 [`close_hpst`](#方法-bililivewsclose_hpst) 方法。
 
 #### 方法 `BiliLiveWS.error`
 
@@ -495,7 +512,9 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 #### 方法 `BiliLiveWS.get_rest_data`
 
-获取API数据，任意发送数据参数不为None时将使用POST请求
+获取API数据，任意发送数据参数不为None时将使用POST请求。
+
+若未指定 `timeout` 参数，将读取 `request_timeout` 属性作为超时时间。
 
 *参数* `tip` : 操作提示，用于生成错误和日志
 
@@ -505,17 +524,17 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 *参数* `json` : 要发送的数据，类型JSON
 
-*参数* `headers` : 本次请求要合并一起使用的请求头，通过拷贝[headers](#属性-bililivewsheaders)属性后合并得出要使用的请求头
+*参数* `headers` : 本次请求要额外使用的请求头，由requests库处理
 
-*参数* `cookies` : 本次请求要合并一起使用的cookie，通过拷贝[cookies](#属性-bililivewscookies)属性后合并得出要使用的cookie
+*参数* `cookies` : 本次请求要额外使用的cookie，由requests库处理
+
+*参数* `timeout` : 指定本次请求的超时时间
 
 *参数* `err_code_raise` : 若为真值，响应内容的code不为0时将抛出错误，最好使用位置参数传递。
 
 **返回值:** 经过json解析后的响应内容
 
-**异常:** `TypeError` , `KeyboardInterrupt` , `DataError` , `GetDataError`
-
-当抛出 `DataError` 时，将保留当前合并操作的headers和cookies
+**异常:** `TypeError` , `KeyboardInterrupt` , `GetDataError`
 
 当抛出 `GetDataError` 时，将保留一些可供程序读取的请求状态参数：
 
@@ -549,7 +568,7 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 获取Cookie数据。
 
-若存在名为 `read_cookie` 的方法，将委托该方法来处理cookie数据。
+若存在名为 `read_cookie` 的属性，将委托该方法来处理cookie数据，当处于调试模式时将记录会被argparse模块处理的内置异常。
 
 自身内置了一些简单的cookie处理逻辑。
 
@@ -560,6 +579,8 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 **返回值:** 一个 `CookiesAgent` 代理对象或 `None` 。
 
 *可能抛出异常* `ValueError` : 表示内容解析失败
+
+> 2025-09-30修改: read_cookie的返回值不再强制包装为[CookiesAgent](#类-cookiesagent)对象，是否使用应由读取的逻辑如[start](#方法-bililivewsstart)方法决定，默认的启动实现不读取非[CookiesAgent](#类-cookiesagent)的对象。
 
 #### 方法 `BiliLiveWS.build_argparser`
 
