@@ -94,7 +94,7 @@ class LiveLink(NamedTuple):
 class ToolBase(blm.BiliLiveExp):
     """基本工具"""
 
-    def set_cookie(self,data:dict[str,str]|None)->str:
+    def set_cookie(self,data:dict[str,str]|Any|None)->str:
         """设置cookie。若输入None将清除所有已存在的cookie"""
         cks=self.cookies
         if data is None:

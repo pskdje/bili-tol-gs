@@ -9,7 +9,7 @@ import argparse
 import websockets
 import websockets.asyncio.server
 import mcws_cmd_handle as MCH
-from blw import log,GetDataError,BiliLiveWS
+from blw import log,GetDataError,CookiesAgent,BiliLiveWS
 from typing import Any
 from mcws import MinecraftWS
 from urllib.parse import urlparse
@@ -141,7 +141,7 @@ class MCWSP(BiliLiveWS,MinecraftWS):
         s.uid=self.uid
         s.wbi_imgKey=self.wbi_imgKey
         s.wbi_subKey=self.wbi_subKey
-        s.cookies|=self.cookies
+        s.cookies.update(self.cookies)
         if "buvid3" not in s.cookies:
             try:
                 b=s.set_buvid3_4()
@@ -230,7 +230,9 @@ class MCWSP(BiliLiveWS,MinecraftWS):
         if a.debug:
             blw.DEBUG=True
             blw.set_log()
-        self.cookies|=a.cookie
+        if isinstance(a.cookie,CookiesAgent):
+            for ck,cv in a.cookie.items():
+                self.cookies.set(ck,cv,domain=".bilibili.com")
         self.get_login_nav()
         try:
             asyncio.run(self.main(a.port))
