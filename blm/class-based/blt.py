@@ -107,6 +107,10 @@ class ToolBase(blm.BiliLiveExp):
                     continue
                 cks.set(ck,cv,domain=".bilibili.com")
             return "dict_to_cookie"
+        if isinstance(data,cookiejar.CookieJar):
+            cks.update(data)
+            return "cookiejar"
+        return "none"
 
     def split_kv_cookie(self,data:str)->dict[str,str]:
         """从字符串获取cookie"""
@@ -122,15 +126,19 @@ class ToolBase(blm.BiliLiveExp):
             if m[0]==".bilibili.com":
                 c[m[-2]]=m[-1]
         return self.set_cookie(c)
-    def split_mozilla_cookie(self,path:str):
-        """处理 Mozilla cookies.txt 文件格式"""
-        cj=cookiejar.MozillaCookieJar()
+    def split_file_cookie(self,path:str,cj:type[cookiejar.FileCookieJar]):
+        """处理存储在文件的cookie
+        path: 文件路径
+        cj: FileCookieJar子类的类对象
+        """
+        c=cj()
         try:
-            cj.load(path)
+            c.load(path)
         except cookiejar.LoadError:
             return "LoadError"
         else:
-            self.cookies.update(cj)
+            self.cookies.update(c)
+            return "update"
 
     def read_cookie(self,data:str)->dict[str,str]|None:
         """读取cookie"""
@@ -139,6 +147,9 @@ class ToolBase(blm.BiliLiveExp):
             return self.split_kv_cookie(data)
         if p.stat().st_size>1048575:
             raise ValueError("文件大小超过1MB")
+        sfcs="update"
+        if self.split_file_cookie(data,cookiejar.MozillaCookieJar)==sfcs:return "MozillaCookieJar"
+        if self.split_file_cookie(data,cookiejar.LWPCookieJar)==sfcs:return "LWPCookieJar"
         try:
             d=p.read_text()
         except:

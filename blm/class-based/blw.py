@@ -536,7 +536,7 @@ class BiliLiveWS:
         rqh=headers
         cks=cookies
         rto=self.request_timeout
-        if timeout>0:
+        if isinstance(timeout,tuple) or timeout>0:
             rto=timeout
         log.debug(f"""[请求]{url}
 headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
