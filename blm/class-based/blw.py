@@ -8,8 +8,8 @@
 但要注意：它能记录的信息是有限的，并要尽快记录一些信息。因此，你可能需要自行处理一些信息。
 """
 
-import sys,time,json,re,zlib
-import errno,logging,traceback
+import sys,time,json,re
+import logging,traceback
 import typing,asyncio,argparse
 import struct,warnings
 import requests
@@ -17,6 +17,11 @@ import websockets
 import logging.handlers
 from pathlib import Path
 from typing import Any,NoReturn
+import collections.abc as c_abc
+try:# 兼容3.14之后
+    from compression import zlib # type: ignore
+except ModuleNotFoundError:
+    import zlib
 try:
     import brotli
 except ImportError:
@@ -30,6 +35,12 @@ __all__:list[str]=[
     "LOGDIRPATH",
     "ENCODING",
     "wbi_mixinKeyEncTab",
+    # 类型
+    "AddArgsDict",
+    "BiliRESTReturn",
+    "LiveMessageStreamDict",
+    "LMSD_data",
+    "CmdHandleProto",
     # 函数
     "error",
     "pr",
@@ -142,6 +153,53 @@ def error(v:dict[Any]=None,d:Any=None)->None:
             print("错误信息已存储至",str(fp))
     cumulative_error_count+=1
 
+class AddArgsDict(typing.TypedDict,total=False):
+    """给 from_list_add_args 函数使用的待添加参数字典，详细参数选项请查看Python文档"""
+    name:typing.Required[str]
+    """参数名称，允许以--开头或不开头"""
+    help:str
+    action:str|argparse.Action
+    nargs:int|str
+    const:Any
+    default:Any
+    type:str|type|c_abc.Callable
+    choices:c_abc.Sequence[Any]
+    required:bool
+    metavar:str
+    dest:str
+
+class BiliRESTReturn[D=dict](typing.TypedDict,total=False):
+    """REST API 返回信息注解\n
+    须知：不同接口的返回信息不一定相同
+    """
+    code:typing.Required[int]
+    """返回值，基本都存在"""
+    message:str
+    """提示信息，绝大部分接口都存在"""
+    ttl:int
+    """未知"""
+    msg:str
+    """内容与message相同，部分接口存在"""
+    data:D
+    """信息本体"""
+class LiveMessageStreamDict(typing.TypedDict,total=False):
+    """直播信息流数据包注解\n
+    必须存在cmd属性用于识别。
+    并不是所有数据包都会存在data属性。
+    部分数据包还会存在一些私有属性。
+    """
+    cmd:typing.Required[str]
+    """数据包cmd"""
+class LMSD_data[D=dict](LiveMessageStreamDict):
+    """直播信息流数据包注解\n
+    在原有的基础上添加常用的data属性
+    """
+    data:D
+    """数据包内容，较为常用"""
+class CmdHandleProto(typing.Protocol):
+    """cmd处理的逻辑结构"""
+    def __call__(pack:LiveMessageStreamDict)->None:...
+
 def pr(d:Any)->Any:
     """打印并返回输入的值。[用于调试]"""
     print(d)
@@ -191,7 +249,7 @@ class WSClientError(BLWException):
 class SavePack(BLWException):
     """保存数据包"""
 
-def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[dict]|tuple[dict,...])->list[str]:
+def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[AddArgsDict]|tuple[AddArgsDict,...])->list[str]:
     """从列表添加命令行选项
     argobj: 参数解析对象
     arg_list: 一个或多个参数解析方法的列表
@@ -516,7 +574,7 @@ class BiliLiveWS:
         headers:dict|None=None,cookies:dict|None=None,
         timeout:float|tuple[float,float]=0,
         err_code_raise:bool=True
-    )->dict[str,str|int|dict]:
+    )->BiliRESTReturn:
         """获取API数据
         任意发送数据参数不为None时将使用POST请求
         tip: 操作提示，用于生成错误和日志
@@ -762,10 +820,10 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             txt+=" (未开播或不显示)"
         self.pct("人气",txt)
         return hp
-    def split_datapack(self,msg:bytes)->list[dict]|None:
+    def split_datapack(self,msg:bytes)->list[LiveMessageStreamDict]|None:
         """分割压缩数据包的内容"""
-        data=msg.split(b"\0\x10\0\0\0\0\0\x05\0\0\0\0")[1:]# 能跑就行
-        packlist:list[dict]=[]
+        data:bytes=msg.split(b"\0\x10\0\0\0\0\0\x05\0\0\0\0")[1:]# 能跑就行
+        packlist:list[LiveMessageStreamDict]=[]
         try:
             for item in data:
                 if len(item)<5:
@@ -795,7 +853,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
         for key,value in self.pack_count.items():
             self.p("cmd",key,"计数",value)
         return self.pack_count
-    def pac_cmd_call(self,pack:dict)->None:
+    def pac_cmd_call(self,pack:LiveMessageStreamDict)->None:
         """查找cmd对应的处理函数"""
         cmd:str=pack["cmd"]
         if cmd in self.save_cmd:
@@ -805,7 +863,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
         if cmd in self.only_count_cmd and cmd not in self.count_cmd:
             self.cmd_count_add(cmd)
             return
-        cmd_handle=getattr(self,f"l_{cmd}",None)
+        cmd_handle:CmdHandleProto|None=getattr(self,f"l_{cmd}",None)
         if callable(cmd_handle):
             cmd_handle(pack)
         else:
@@ -816,7 +874,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
                 self.on_no_support_cmd_tip(cmd)
             if DEBUG or self.args.save_unknow_datapack:
                 savepack(pack)
-    def for_packlist(self,packlist:list[dict])->None:
+    def for_packlist(self,packlist:list[LiveMessageStreamDict])->None:
         """循环遍历数据包列表给后续函数"""
         if packlist is None:
             log.warning("未收到数据包列表")

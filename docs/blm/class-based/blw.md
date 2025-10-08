@@ -10,8 +10,7 @@
 
 Python:
 
-- \>3.11
-- 未测试是否可在低版本中使用
+- \>=3.13
 
 第三方库:
 
@@ -123,6 +122,38 @@ wbi重排映射表。
 *参数* `v` : 额外的变量列表
 
 *参数* `d` : 额外信息
+
+### 类型 `AddArgsDict`
+
+给[`from_list_add_args`](#函数-from_list_add_args)函数使用的待添加参数字典，参数使用方法请查看Python文档的[argparse.ArgumentParser.add_argument](https://docs.python.org/zh-cn/3/library/argparse.html#argparse.ArgumentParser.add_argument)文档。
+
+### 类型 `BiliRESTReturn`
+
+REST API 返回信息注解。
+
+须知：不同接口的返回信息不一定相同。
+
+该类支持下标操作 (`[]`) ，标注信息本体的内容。
+
+> 注意：若使用Python 3.12 ，需要删除类型形参的默认值，否则会语法错误。
+
+### 类型 `LiveMessageStreamDict`
+
+直播信息流数据包注解，必须存在cmd属性用于识别。
+
+并不是所有数据包都会存在data属性，部分数据包还会存在一些私有属性。
+
+### 类型 `LMSD_data`
+
+直播信息流数据包注解，在原有的基础上添加常用的data属性。
+
+该类支持下标操作 (`[]`) ，标注data属性的内容。
+
+> 注意：若使用Python 3.12 ，需要删除类型形参的默认值，否则会语法错误。
+
+### 类型 `CmdHandleProto`
+
+cmd处理的逻辑结构。
 
 ### 函数 `pr`
 

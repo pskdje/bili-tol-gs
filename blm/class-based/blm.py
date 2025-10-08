@@ -2,7 +2,7 @@
 """
 
 import blw
-import sys,time,re,argparse
+import sys,time,re,argparse,typing
 from blw import GetDataError,WSClientError,CookiesAgent,log
 from collections.abc import Generator
 from typing import Any,Self
@@ -16,6 +16,9 @@ __all__=[
     "BiliLiveSaveExp",
     "BiliLiveMsg",
 ]
+
+if typing.TYPE_CHECKING:
+    import bili_types.blm as blm_T
 
 def add_no_cmd_args(cmd_args:list[dict],cmd_name_list:dict[str,str],help:Any=None)->list[dict]:
     """为cmd_args附加cmd参数
@@ -127,19 +130,19 @@ class BiliLiveExp(blw.BiliLiveWS):
                 top_args.append(i)
         blw.from_list_add_args(argp,top_args)
 
-    def get_room_init(self)->dict:
+    def get_room_init(self)->"blm_T.RoomInit":
         """获取直播间初始化信息，若需要主播uid或者将短号转为原始房间号必须调用"""
         d=self.get_rest_data("获取直播间初始化信息","https://api.live.bilibili.com/room/v1/Room/room_init?id="+str(self.roomid))["data"]
         self.roomid=d["room_id"]
         self.up_uid=d["uid"]
         return d
-    def get_room_info(self)->dict:
+    def get_room_info(self)->"blm_T.RoomInfo":
         """获取直播间信息"""
         return self.get_rest_data("获取直播间信息","https://api.live.bilibili.com/room/v1/Room/get_info?room_id="+str(self.roomid))["data"]
-    def get_master_info(self)->dict:
+    def get_master_info(self)->"blm_T.MasterInfo":
         """获取主播信息"""
         return self.get_rest_data("获取主播信息","https://api.live.bilibili.com/live_user/v1/Master/info?uid="+str(self.up_uid))["data"]
-    def get_play_url(self)->dict:
+    def get_play_url(self)->"blm_T.PlayURL":
         """获取直播视频流"""
         return self.get_rest_data("获取直播视频流",f"https://api.live.bilibili.com/room/v1/Room/playUrl?cid={self.roomid}&platform=web&quality=4")["data"]
 
@@ -185,7 +188,7 @@ class BiliLiveExp(blw.BiliLiveWS):
         for i in d["durl"]:
             self.p(f"线路{i['order']}链接:",i["url"])
 
-    def set_buvid3_4(self)->dict[str,str]:
+    def set_buvid3_4(self)->"blm_T.Buvid3_4":
         """设置buvid3和buvid4这两个Cookie，并返回数据本体"""
         d=self.get_rest_data("获取buvid3和buvid4","https://api.bilibili.com/x/frontend/finger/spi")["data"]
         self.cookies["buvid3"]=d["b_3"]
