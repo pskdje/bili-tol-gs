@@ -512,8 +512,7 @@ class BiliLiveWS:
         return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}>"
     def __del__(self)->None:
         """清除"""
-        self.requests_session.close()
-        self.close_hpst()
+        self.close()
 
     @property
     def headers(self):
@@ -544,6 +543,10 @@ class BiliLiveWS:
     def pct(self,name:str,*data:Any)->None:
         """统一按照一定样式输出cmd处理后文本"""
         self.p(f"[{name}]",*data)
+    def close(self)->None:
+        """关闭"""
+        self.requests_session.close()
+        self.close_hpst()
 
     # 事件，主要在主程序中显示提示
     def on_conn_ws_server(s)->None:

@@ -1,5 +1,5 @@
 """全部该项目已知cmd处理
-数据分析由我自己进行，不保证准确，请注意时效，日期:2025/02/21，操作:添加
+数据分析由我自己进行，不保证准确，请注意时效，日期:2025/12/01，操作:修改
 已存在的cmd很难确认是否需要更新
 可参考 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md 页面，但存在时效性。
 """
@@ -298,6 +298,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
                 e=True
         if e:
             raise SavePack(f"未知点赞通知类型:{t}")
+    def l_LIKE_GUIDE_USER(s,p):
+        """引导用户点赞"""
+        d=p["data"]
+        s.pct("提示","点赞提醒",d["like_text"])
     def l_UNIVERSAL_EVENT_GIFT(s,p):
         """连线礼物累计变化信息"""
         s.pct("信息","(V1)","连线礼物累计变化")
@@ -411,7 +415,7 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         if y==1:
             s.pct("提示",d["upper_bound_content"])
         elif y==2:
-            s.pct("提示","重新点亮了勋章")
+            s.pct("提示","重新点亮了勋章:",d["medal_name"])
         else:
             z=f"未知的粉丝勋章更新类型: {y}"
             s.pct("支持",z)
@@ -427,6 +431,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """热购数量"""
         d=p["data"]
         s.pct("广告","商品id",d["goods_id"],"热抢数量",d["num"])
+    def l_AD_GAME_CARD_REFRESH(s,p):
+        """推广游戏卡刷新"""
+        d=p["data"]
+        s.pct("广告",f"游戏卡id:{d['card_id']} 用户不重复点击数: {d['game_card_click_uv']}")
     def l_LOG_IN_NOTICE(s,p):
         """登录提示"""
         d=p["data"]

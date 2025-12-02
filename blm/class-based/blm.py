@@ -252,11 +252,22 @@ class BiliLiveSaveExp(BiliLiveExp):
         {"name":"save-to-file","help":"保存打印内容到文件","type":SaveToFile,"metavar":"PATH"},
     ]
 
+    @property
+    def save_to_file(self)->SaveToFile:
+        """暴露save_to_file参数"""
+        return self.args.save_to_file
+
     def p(self,*t:Any)->None:
         """输出文本"""
         print(*t)
         if self.args.save_to_file:
             print(*t,file=self.args.save_to_file)
+
+    def close(self)->None:
+        """关闭"""
+        super().close()
+        if self.args.save_to_file:
+            self.args.save_to_file.close()
 
 class BiliLiveMsg(BiliLiveExp):
     """启用"""

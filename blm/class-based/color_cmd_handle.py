@@ -373,6 +373,10 @@ class ConditionsFrequentCmdHandle(BLMColor):
         "LIVE_MULTI_VIEW_CHANGE":"多个直播视角信息更新",
         "DM_INTERACTION":"交互合并",
         "UNIVERSAL_EVENT_GIFT":"连线礼物累计变化",
+        "RECOMMEND_CARD":"推荐卡片",
+        "GOTO_BUY_FLOW":"购买商品",
+        "HOT_BUY_NUM":"热购数量",
+        "AD_GAME_CARD_REFRESH":"推广游戏卡片刷新",
     })
 
     clr_dm_inter_task:asyncio.Task=None
@@ -480,6 +484,25 @@ class ConditionsFrequentCmdHandle(BLMColor):
         if s.args.no_UNIVERSAL_EVENT_GIFT:return
         d=p["data"]
         s.pct("信息",f"{TVER}(V2){CD}","连线礼物累计变化",f"连线主播:len({len(d['members'])})")
+    def l_RECOMMEND_CARD(s,p):
+        """推荐卡片"""
+        if s.args.no_RECOMMEND_CARD:return
+        d=p["data"]
+        s.pct("广告","推荐卡片","推荐数量:",len(d["recommend_list"]),"更新数量:",len(d["update_list"]))
+    def l_GOTO_BUY_FLOW(s,p):
+        """购买商品"""
+        if s.args.no_GOTO_BUY_FLOW:return
+        s.pct("广告",p["data"]["text"])
+    def l_HOT_BUY_NUM(s,p):
+        """热购数量"""
+        if s.args.no_HOT_BUY_NUM:return
+        d=p["data"]
+        s.pct("广告",f"商品id {TSTR}{d['goods_id']}{CD} 热抢数量 {TNUM}{d['num']}{CD}")
+    def l_AD_GAME_CARD_REFRESH(s,p):
+        """推广游戏卡刷新"""
+        if s.args.no_AD_GAME_CARD_REFRESH:return
+        d=p["data"]
+        s.pct("广告",f"游戏卡id:{TSTR}{d['card_id']}{CD} 用户不重复点击数: {TNUM}{d['game_card_click_uv']}{CD}")
 
 class RareCmdHandle(BLMColor):
     """低频少见特定条件的数据包处理"""
@@ -493,10 +516,8 @@ class RareCmdHandle(BLMColor):
         "rank-changed":"排行更新",
         "popularity-red-pocket":"红包相关",
         "LIKE_INFO_V3_NOTICE":"点赞通知",
+        "LIKE_GUIDE_USER":"引导用户点赞",
         "GUARD_HONOR_THOUSAND":"千舰主播增减",
-        "RECOMMEND_CARD":"推荐卡片",
-        "GOTO_BUY_FLOW":"购买商品",
-        "HOT_BUY_NUM":"热购数量",
         "GIFT_STAR_PROCESS":"礼物星球进度",
         "anchor-lot":"天选时刻",
         "ANCHOR_NORMAL_NOTIFY":"推荐提示",
@@ -589,7 +610,7 @@ class RareCmdHandle(BLMColor):
         if y==1:
             s.pct("提示",d["upper_bound_content"])
         elif y==2:
-            s.pct("提示","重新点亮了勋章")
+            s.pct("提示",f"重新点亮了勋章: {C_12}{d['medal_name']}{CD}")
         else:
             z=f"未知的粉丝勋章更新类型: {y}"
             s.pct("支持",z)
@@ -683,6 +704,11 @@ class RareCmdHandle(BLMColor):
                 e=True
         if e:
             raise SavePack(f"未知点赞通知类型:{t}")
+    def l_LIKE_GUIDE_USER(s,p):
+        """引导用户点赞"""
+        if s.args.no_LIKE_GUIDE_USER:return
+        d=p["data"]
+        s.pct("提示",f"点赞提醒 {C_10}{d['like_text']}{CD}")
     def l_LOG_IN_NOTICE(s,p):
         """登录提示"""
         d=p["data"]
@@ -699,20 +725,6 @@ class RareCmdHandle(BLMColor):
         ad=ts(d["add"])
         dl=ts(d["del"])
         s.pct("提示","千舰主播增加:",','.join(ad),"减少:",','.join(dl))
-    def l_RECOMMEND_CARD(s,p):
-        """推荐卡片"""
-        if s.args.no_RECOMMEND_CARD:return
-        d=p["data"]
-        s.pct("广告","推荐卡片","推荐数量:",len(d["recommend_list"]),"更新数量:",len(d["update_list"]))
-    def l_GOTO_BUY_FLOW(s,p):
-        """购买商品"""
-        if s.args.no_GOTO_BUY_FLOW:return
-        s.pct("广告",p["data"]["text"])
-    def l_HOT_BUY_NUM(s,p):
-        """热购数量"""
-        if s.args.no_HOT_BUY_NUM:return
-        d=p["data"]
-        s.pct("广告",f"商品id {TSTR}{d['goods_id']}{CD} 热抢数量 {TNUM}{d['num']}{CD}")
     def l_GIFT_STAR_PROCESS(s,p):
         """礼物星球进度"""
         if s.args.no_GIFT_STAR_PROCESS:return

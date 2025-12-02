@@ -6,8 +6,8 @@ import blw,blm
 import time,json,asyncio
 import http.cookiejar as cookiejar
 from pathlib import Path
-from typing import NamedTuple,Any,Self
-from blw import GetDataError,log
+from typing import NamedTuple,Any,Self,Literal,overload,TYPE_CHECKING
+from blw import GetDataError,log,BiliRESTReturn
 
 __all__=[
     # 常量
@@ -28,6 +28,9 @@ __all__=[
     # 接口合并
     "BiliLiveTools"
 ]
+
+if TYPE_CHECKING:
+    import bili_types.blt as blt_T
 
 DEFAULT_APPkey="1d8b6e7d45233436"
 DEFAULT_APPsec="560c52ccd288fed045859ed18bffd973"
@@ -163,7 +166,7 @@ class ToolBase(blm.BiliLiveExp):
     appkey=DEFAULT_APPkey
     appsec=DEFAULT_APPsec
 
-    def add_csrf(self,odic:dict[str,str])->dict:
+    def add_csrf[D:dict[str,str]](self,odic:D)->D:
         """为dict添加csrf"""
         odic["csrf"]=self.cookies["bili_jct"]
         return odic
@@ -195,9 +198,19 @@ class DanmuTools(ToolBase):
         """发送弹幕失败，传入错误对象"""
 
     # 发送弹幕
-    def send_danmu(self,msg:str,reply_mid:int=0,replay_dmid:str="")->dict:
+    @overload
+    def send_danmu(self,msg:str,reply_mid:int,replay_dmid:str,*,return_type:Literal["extra"])->dict: ...
+    @overload
+    def send_danmu(self,msg:str,reply_mid:int,replay_dmid:str,*,return_type:Literal["extra_raw"])->str: ...
+    @overload
+    def send_danmu(self,msg:str,reply_mid:int,replay_dmid:str,*,return_type:Literal["raw"])->BiliRESTReturn["blt_T.SendLiveDanmuRes"]: ...
+    @overload
+    def send_danmu(self,msg:str,reply_mid:int,replay_dmid:str,*,return_type:Literal["data"])->"blt_T.SendLiveDanmuRes": ...
+    @overload
+    def send_danmu(self,msg:str,reply_mid:int,replay_dmid:str,*,return_type:str)->dict: ...
+    def send_danmu(self,msg:str,reply_mid:int=0,replay_dmid:str="",*,return_type:str="extra"):
         """发送弹幕\n\nmsg: 弹幕内容\n\nreply_mid: 被回复者的uid\n\nreplay_dmid: 要回复的弹幕id"""
-        r=self.get_rest_data("发送弹幕","https://api.live.bilibili.com/msg/send",self.add_csrf({
+        r:BiliRESTReturn["blt_T.SendLiveDanmuRes"]=self.get_rest_data("发送弹幕","https://api.live.bilibili.com/msg/send",self.add_csrf({
             "roomid":self.roomid,
             "msg":msg,
             "rnd":int(time.time()),
@@ -207,6 +220,10 @@ class DanmuTools(ToolBase):
             "reply_mid":reply_mid,
             "replay_dmid":replay_dmid,
         }))
+        t=return_type
+        if t=="extra_raw":return r["data"]["mode_info"]["extra"]
+        elif t=="raw":return r
+        elif t=="data":return r["data"]
         return json.loads(r["data"]["mode_info"]["extra"])
     async def send_msg_and_restrict(self,msg:str,rate_limit:bool=True,*an:Any,**ad:Any)->None|str:
         """发送弹幕并进行一些限制
@@ -240,10 +257,10 @@ class DanmuTools(ToolBase):
         return asyncio.create_task(self.send_msg_and_restrict(msg,*an,**ad),name="发送弹幕任务")
 
     # 弹幕配置
-    def get_dm_config(self)->dict:
+    def get_dm_config(self)->"blt_T.GetDMConfigByGroup":
         """获取当前直播间弹幕可选配置"""
         r=self.get_rest_data("获取弹幕可选配置",f"https://api.live.bilibili.com/xlive/web-room/v1/dM/GetDMConfigByGroup?room_id={self.roomid}")
-        d=r["data"]
+        d:"blt_T.GetDMConfigByGroup"=r["data"]
         cl={}
         md={}
         for i1 in d["group"]:
@@ -254,7 +271,7 @@ class DanmuTools(ToolBase):
         self.dm_color=cl
         self.dm_mode=md
         return d
-    def set_dm_config(self,color:str=None,mode:int=None)->dict:
+    def set_dm_config(self,color:str=None,mode:int=None)->BiliRESTReturn["blt_T.SetDMConfig"]:
         """设置当前直播间的弹幕配置
         color和mode必须选一个提供，并且不能同时存在
         详见: [issue(comment)](https://github.com/SocialSisterYi/bilibili-API-collect/issues/1236#issuecomment-2849019923) [BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/danmaku.md#%E8%AE%BE%E7%BD%AE%E5%BC%B9%E5%B9%95%E6%A0%B7%E5%BC%8F)"""
@@ -267,14 +284,14 @@ class DanmuTools(ToolBase):
             d["mode"]=mode
         return self.get_rest_data("设置弹幕配置","https://api.live.bilibili.com/xlive/web-room/v1/dM/AjaxSetConfig",data=d)
 
-    def get_dm_history(self)->dict:
+    def get_dm_history(self)->BiliRESTReturn["blt_T.GetDMHistory"]:
         """获取历史弹幕"""
         return self.get_rest_data("获取历史弹幕",f"https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory?roomid={self.roomid}")
 
 class SpectatorTools(ToolBase):
     """观众操作"""
 
-    def getInfoByUser(self):
+    def getInfoByUser(self)->dict:
         """获取用户在某个直播间的状态信息，此接口将会使服务器下发进入直播间信息"""
         d=self.get_rest_data("进入直播间",f"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByUser?room_id={self.roomid}")["data"]
         try:
@@ -288,7 +305,16 @@ class SpectatorTools(ToolBase):
 class LiveTools(ToolBase):
     """开关播"""
 
-    def startLive(self,area:int,platform:str="pc_link",build="",version="",*,return_type:str="LiveLink")->LiveLink|dict:
+    @overload
+    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:Literal["LiveLink"])->LiveLink: ...
+    @overload
+    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:Literal["raw"])->BiliRESTReturn["blt_T.StartLive"]: ...
+    @overload
+    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:Literal["data"])->"blt_T.StartLive": ...
+    @overload
+    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:str)->LiveLink: ...
+
+    def startLive(self,area:int,platform:str="pc_link",build:str|int="",version:str="",*,return_type:str="LiveLink"):
         """开始直播\n
         area: 直播分区\n
         platform: 直播平台\n
@@ -313,7 +339,7 @@ class LiveTools(ToolBase):
         elif rt=="data":
             return d
         return LiveLink(d["rtmp"]["addr"],d["rtmp"]["code"])
-    def stopLive(self,platform:str="pc_link")->dict:
+    def stopLive(self,platform:str="pc_link")->"blt_T.StopLive":
         """停止直播\n
         platform: 直播平台"""
         b=self.add_csrf({
@@ -326,7 +352,7 @@ class LiveTools(ToolBase):
 class LiveDataTools(ToolBase):
     """直播数据"""
 
-    def stopLiveData(self,live_key:str=None)->dict:
+    def stopLiveData(self,live_key:str=None)->"blt_T.StopLiveData":
         """获取停止直播场次的数据
         若提供live_key将使用这个key，否则从self.live_key读取
         若还是没有将抛出错误，由getattr抛出"""
@@ -338,7 +364,7 @@ class LiveDataTools(ToolBase):
 class RoomTools(ToolBase):
     """直播间管理"""
 
-    def room_update(self,title:str=None,area:int=None,add_tag:str=None,del_tag:str=None)->dict:
+    def room_update(self,title:str=None,area:int=None,add_tag:str=None,del_tag:str=None)->"blt_T.RoomUpdate":
         """更新直播间信息\n
         title: 直播标题\n
         area: 直播分区\n
@@ -357,7 +383,7 @@ class RoomTools(ToolBase):
             b["del_tag"]=del_tag
         return self.get_rest_data("更新直播间信息","https://api.live.bilibili.com/room/v1/Room/update",b)["data"]
 
-    def updatePreLiveInfo(self,cover:str=None,title:str=None,*,platform:str="web")->dict:
+    def updatePreLiveInfo(self,cover:str=None,title:str=None,*,platform:str="web")->"blt_T.UpdatePreLiveInfo":
         """预更新直播信息\n
         cover: 直播封面URL\n
         title: 直播标题\n
