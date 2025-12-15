@@ -15,6 +15,10 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """弹幕"""
         d=p["info"]
         self.pct("弹幕",f"{d[2][1]}:",d[1])
+    def l_DANMU_MSG_MIRROR(s,p):
+        """跨房弹幕"""
+        d=p["info"]
+        s.pct("弹幕",f"(跨房) {d[2][1]}:",d[1])
     def l_INTERACT_WORD(s,p):
         """交互,JSON"""
         info="交互"
@@ -191,6 +195,29 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """在线排行V3,protobuf"""
         s.dc_ONLINE_RANK_V3(p)
         s.l_ONLINE_RANK_V2(p)
+    def l_COLLABORATION_LIVE_WATCHED(s,p):
+        """跨房看过"""
+        d=p["data"]
+        if s.debug:
+            s.pct("观看","跨房",d["num"],"人看过;","text_large:",d["text_large"])
+        else:
+            s.pct("观看","跨房",d["num"],"人看过")
+    def l_COLLABORATION_LIVE_ONLINE(s,p):
+        """跨房在线"""
+        d=p["data"]
+        s.pct("计数","跨房在线人数:",d["text"])
+    def l_COLLABORATION_LIVE_POPULARITY(s,p):
+        """跨房人气"""
+        d=p["data"]
+        s.pct("计数","跨房人气:",d["num"])
+    def l_COLLABORATION_LIVE_INFO(s,p):
+        """跨房直播信息"""
+        d=p["data"]
+        if d["if_collaboration_room"]:
+            m=d["multi_view"]
+            s.pct("信息","跨房直播",f"提示: {d['copy_writing']} ,活动名称: {d['activity_name']}")
+        else:
+            s.pct("信息","跨房直播关闭")
     def l_HOT_RANK_SETTLEMENT(s,p):
         """热门通知"""
         d=p["data"]

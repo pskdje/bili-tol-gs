@@ -267,7 +267,9 @@ Python:
 
 *参数* `replay_dmid` : 要回复的弹幕id
 
-**返回值:** 弹幕扩展信息
+*参数* `return_type` : 返回值类别，详见源代码的重载注解
+
+**返回值:** 依照 `return_type` 参数决定，详见源代码的重载注解
 
 #### 异步方法 `DanmuTools.send_msg_and_restrict`
 
@@ -359,9 +361,9 @@ Python:
 
 *参数* `version` : 直播姬版本号
 
-*参数* `return_type` : 返回数据类型('raw':原始响应,'data':信息本体,其它值:LiveLink对象)
+*参数* `return_type` : 返回数据类别，详见源代码的重载注解
 
-**返回值:** 依照 `return_type` 参数决定
+**返回值:** 依照 `return_type` 参数决定，详见源代码的重载注解
 
 #### 方法 `LiveTools.stopLive`
 

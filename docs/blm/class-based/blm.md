@@ -249,9 +249,17 @@ python blm.py 3
 
 将会添加 `--save-to-file` 命令行参数。
 
+#### 属性 `BiliLiveSaveExp.save_to_file`
+
+暴露 `self.args.save_to_file` 参数。
+
 #### 属性 `BiliLiveSaveExp.p`
 
 输出文本并保存。
+
+#### 方法 `BiliLiveSaveExp.close`
+
+调用基类的关闭方法，然后调用save_to_file的关闭方法。
 
 ### 类 `BiliLiveMsg`
 

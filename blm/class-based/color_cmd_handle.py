@@ -369,6 +369,8 @@ class ConditionsFrequentCmdHandle(BLMColor):
     """特定条件时高频下发的数据包处理"""
 
     cmd_args=blm.add_no_cmd_args([],{
+        "DANMU_MSG_MIRROR":"跨房弹幕",
+        "COLLABORATION_LIVE_INFO":"协作直播相关",
         "WIDGET_BANNER":"小部件",
         "LIVE_MULTI_VIEW_CHANGE":"多个直播视角信息更新",
         "DM_INTERACTION":"交互合并",
@@ -384,6 +386,38 @@ class ConditionsFrequentCmdHandle(BLMColor):
     dm_inter_list:dict[int,dict[str,int]]={}
     """交互合并暂存"""
 
+    def l_DANMU_MSG_MIRROR(s,p):
+        """跨房弹幕"""
+        if s.args.no_DANMU_MSG_MIRROR:return
+        d=p["info"]
+        s.pct("弹幕",f"{C_07}(跨房){TUSR}{d[2][1]}{CD}: {C_07}{d[1]}")
+    def l_COLLABORATION_LIVE_WATCHED(s,p):
+        """跨房看过"""
+        if s.args.no_COLLABORATION_LIVE_INFO:return
+        d=p["data"]
+        if s.debug:
+            s.pct("观看",f"跨房 {TNUM}{d['num']}{CD} 人看过; {TKEY}text_large:{TSTR}{d['text_large']}")
+        else:
+            s.pct("观看",f"跨房 {TNUM}{d['num']}{CD} 人看过")
+    def l_COLLABORATION_LIVE_ONLINE(s,p):
+        """跨房在线"""
+        if s.args.no_COLLABORATION_LIVE_INFO:return
+        d=p["data"]
+        s.pct("计数",f"跨房在线人数: {TSTR}{d['text']}")
+    def l_COLLABORATION_LIVE_POPULARITY(s,p):
+        """跨房人气"""
+        if s.args.no_COLLABORATION_LIVE_INFO:return
+        d=p["data"]
+        s.pct("计数",f"跨房人气: {TNUM}{d['num']}")
+    def l_COLLABORATION_LIVE_INFO(s,p):
+        """跨房直播信息"""
+        if s.args.no_COLLABORATION_LIVE_INFO:return
+        d=p["data"]
+        if d["if_collaboration_room"]:
+            m=d["multi_view"]
+            s.pct("信息","跨房直播",f"提示: {TSTR}{d['copy_writing']}{CD} ,活动名称: {TSTR}{d['activity_name']}{CD}")
+        else:
+            s.pct("信息","跨房直播关闭")
     def l_WIDGET_BANNER(s,p):
         """小部件"""
         if s.args.no_WIDGET_BANNER:return

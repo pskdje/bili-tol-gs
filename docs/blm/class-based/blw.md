@@ -487,7 +487,7 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 #### 方法 `BiliLiveWS.__del__`
 
-关闭请求会话和调用 [`close_hpst`](#方法-bililivewsclose_hpst) 方法。
+调用 [`close`](#方法-bililivewsclose) 方法。
 
 #### 方法 `BiliLiveWS.error`
 
@@ -512,6 +512,10 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 *参数* `name` : 类别名称，输出时会放在 `[]` 内
 
 *剩余位置参数* `data` : 其它信息
+
+#### 方法 `BiliLiveWS.close`
+
+关闭请求会话和调用 [`close_hpst`](#方法-bililivewsclose_hpst) 方法。
 
 #### 方法 `BiliLiveWS.on_conn_ws_server`
 
