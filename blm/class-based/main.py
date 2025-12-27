@@ -83,6 +83,8 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
             self.p("关闭")
             self.print_cmd_count()
             sys.exit(0)
+        finally:
+            self.close()
 
 class StartAllCmdHandle(all_cmd_handle.BiliLiveAllCmdHandle,S):
     """启动all"""

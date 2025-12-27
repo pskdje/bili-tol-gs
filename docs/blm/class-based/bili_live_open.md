@@ -4,7 +4,7 @@
 
 直播开放平台互动框架。
 
-文档: https://open-live.bilibili.com/document/
+文档: <show-url>https://open-live.bilibili.com/document/</show-url>
 
 ## 依赖
 
@@ -30,6 +30,8 @@ Python:
 <pre><code class="language-shell">python bili_live_open.py --BLO-config app.json XXXXXXXX</code></pre>
 
 使用 `-h` 或 `--help` 获取命令行参数提示。
+
+<docs-warn>本框架并未在直播开放平台进行上架。若需使用本框架，需要自行前往<a target="_blank" href="https://open-live.bilibili.com/" referrerpolicy="no-referrer">直播开放平台</a>申请开发密钥，并且<strong>只能在自己的直播间里使用</strong>。</docs-warn>
 
 前往[play-live.bilibili.com](https://play-live.bilibili.com/)或[开播设置](https://link.bilibili.com/#/my-room/start-live)获取主播身份码。
 
@@ -73,11 +75,13 @@ Python:
 
 #### 变量 `LiveOpenAPI.gameID`
 
-直播开放平台游戏id，
+直播开放平台游戏id，由[liveOpenStart](#方法-liveopenapiliveopenstart)设置。
 
 #### 常量 `LiveOpenAPI.UA`
 
 专用自定义用户代理字符串。
+
+继承后可按需修改。
 
 #### 方法 `LiveOpenAPI.error`
 
@@ -252,7 +256,11 @@ Python:
 
 ## 某时间的源代码
 
+滞后于当前源代码。
+
 <img src="https://i0.hdslb.com/bfs/new_dyn/ff5e4d7dd9f7e664424fe75ee7714c7c438160221.png" alt="source image" referrerpolicy="no-referrer" />
+
+该图片上传在<a href="https://www.bilibili.com/video/BV1ECYPzLEyb/" title="哔哩哔哩视频链接" referrerpolicy="no-referrer">BV1ECYPzLEyb</a>的<a href="https://www.bilibili.com/video/BV1ECYPzLEyb/#reply275597849920" title="哔哩哔哩视频评论链接" referrerpolicy="no-referrer">评论区</a>中。
 
 <hr id="markdown-html-space" />
 

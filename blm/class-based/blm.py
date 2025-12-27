@@ -264,7 +264,7 @@ class BiliLiveSaveExp(BiliLiveExp):
             print(*t,file=self.args.save_to_file)
 
     def close(self)->None:
-        """关闭"""
+        """执行低层关闭流程且关闭保存输出的文件"""
         super().close()
         if self.args.save_to_file:
             self.args.save_to_file.close()
@@ -358,3 +358,5 @@ class BiliLiveMsg(BiliLiveExp):
             self.p("关闭")
             self.print_cmd_count()
             sys.exit(0)
+        finally:
+            self.close()

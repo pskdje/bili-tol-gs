@@ -544,7 +544,7 @@ class BiliLiveWS:
         """统一按照一定样式输出cmd处理后文本"""
         self.p(f"[{name}]",*data)
     def close(self)->None:
-        """关闭"""
+        """执行低层关闭流程"""
         self.requests_session.close()
         self.close_hpst()
 
@@ -993,8 +993,6 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
         self.p("获取数据…")
         if isinstance(a.cookie,CookiesAgent):
             self.cookies.update(a.cookie)
-        if "buvid3" not in self.cookies:
-            self.p("[警告]未提供键为buvid3的Cookie，可能会被风控。")
         try:
             self.get_login_nav()
             info=self.get_ws_info()
@@ -1014,6 +1012,8 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             self.p("关闭")
             self.print_cmd_count()
             sys.exit(0)
+        finally:
+            self.close()
 
 def create_log_handle(path:str)->logging.handlers.RotatingFileHandler:
     """创建日志保存处理"""
