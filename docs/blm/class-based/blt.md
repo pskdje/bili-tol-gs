@@ -63,11 +63,9 @@ Python:
 
 返回构造表达式。
 
-#### 静态方法 `APPSign.sign`
+#### 静态方法 `APPSign.app_sign`
 
-<docs-warn>因为编写接口时未用到IDE，所以未注意到名称重复。</docs-warn>
-
-调用 appsign 签名参数。
+调用 appsign 签名参数，使用默认的 APP key 和 APP sec 。
 
 ### 函数 `appsign`
 
@@ -203,7 +201,7 @@ Python:
 
 进行APP签名。
 
-与对应的全局函数不同，返回值为已签名的字典；若不提供 appkey 或 appsec ，将从类中读取。
+若不提供 appkey 或 appsec ，将从类中读取。
 
 *参数* `params` : 要进行APP签名的参数字典
 
@@ -211,9 +209,7 @@ Python:
 
 *参数* `appsec` : APP sec
 
-**返回值:** 已签名的参数字典
-
-<docs-warn>该函数的返回方案可能会进行修改。</docs-warn>
+**返回值:** [APPSign](#类-appsign)实例
 
 ### 类 `DanmuTools`
 
@@ -351,6 +347,8 @@ Python:
 
 <docs-warn>该接口目前只能使用<code>"pc_link"</code>直播平台，使用其它开播平台大概率报错。缺失手机端开播参数信息。</docs-warn>
 
+根据开播账号和各种使用情况来填写参数，具体看它要不要给你通过。
+
 读取 `roomid` 属性。
 
 *参数* `area` : 直播分区id
@@ -361,9 +359,11 @@ Python:
 
 *参数* `version` : 直播姬版本号
 
-*参数* `return_type` : 返回数据类别，详见源代码的重载注解
+*参数* `buvid` : 直播姬buvid
 
-**返回值:** 依照 `return_type` 参数决定，详见源代码的重载注解
+*参数* `return_type` : 返回数据类别，详见源代码
+
+**返回值:** 依照 `return_type` 参数决定，详见源代码
 
 #### 方法 `LiveTools.stopLive`
 

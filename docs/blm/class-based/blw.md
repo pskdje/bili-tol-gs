@@ -213,13 +213,27 @@ blw ws 客户端异常。
 
 **继承:** `BLWException`
 
+### 异常 `BLWSign`
+
+用于当做信号的异常基类。
+
+**继承:** `BLWException`
+
 ### 异常 `SavePack`
 
 保存数据包。
 
 在数据包处理时抛出该异常，表示需要保存该数据包。
 
-**继承:** `BLWException`
+**继承:** `BLWSign`
+
+### 异常 `ExitBLW`
+
+cmd处理请求退出程序。
+
+该异常设计给特殊用途使用，不应随意抛出。除非属于用户操作，例如关闭用户界面。
+
+**继承:** `BLWSign`
 
 ### 函数 `from_list_add_args`
 
@@ -271,6 +285,36 @@ blw ws 客户端异常。
 
 *参数* `d` : 数据包内容
 
+### 类 `WbiSign`
+
+Wbi签名结果存储。
+
+#### 属性 `WbiSign.query`
+
+已签名查询参数字符串。
+
+#### 属性 `WbiSign.signed_params`
+
+已签名查询参数字典。
+
+#### 属性 `WbiSign.curr_time`
+
+签名时间。
+
+#### 属性 `WbiSign.sign`
+
+签名字符串。
+
+#### 方法 `WbiSign.__init__`
+
+通过输入的信息创建Wbi签名结果容纳。
+
+参数名称和描述与类属性相同。
+
+#### 方法 `WbiSign.__repr__`
+
+返回类名和签名字符串。
+
 ### 函数 `wbi_getMixinKey`
 
 对 imgKey + subKey 的字符串顺序打乱编码，详见[wbi_encode函数](#函数-wbi_encode)的说明。
@@ -291,13 +335,7 @@ blw ws 客户端异常。
 
 *参数* `subKey` : subKey
 
-**返回值:** 使用 `argparse.Namespace` 包装的数据。
-
-*属性* `query` : 签名后编码的URL查询参数
-
-*属性* `signed_params` : 签名后的参数字典
-
-*属性* `curr_time` : 签名时间
+**返回值:** [`WbiSign`](#类-wbisign)实例
 
 ### 类 `LiveMsgProto`
 

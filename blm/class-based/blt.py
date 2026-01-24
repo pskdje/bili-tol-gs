@@ -37,7 +37,7 @@ DEFAULT_APPsec="560c52ccd288fed045859ed18bffd973"
 
 class APPSign:
     """APP签名返回"""
-    def __init__(self,query,signed_params,sign):
+    def __init__(self,query:str,signed_params:dict[str,Any],sign:str):
         """记录"""
         self.query=query # 查询参数
         self.signed_params=signed_params # 查询字典
@@ -50,7 +50,7 @@ class APPSign:
         return f"APPSign({repr(self.query)}, {repr(self.signed_params)}, {repr(self.sign)})"
 
     @staticmethod
-    def sign(params:dict,appkey:str=DEFAULT_APPkey,appsec:str=DEFAULT_APPsec)->Self:
+    def app_sign(params:dict,appkey:str=DEFAULT_APPkey,appsec:str=DEFAULT_APPsec)->Self:
         """签名"""
         return appsign(params,appkey,appsec)
 
@@ -171,13 +171,13 @@ class ToolBase(blm.BiliLiveExp):
         odic["csrf"]=self.cookies["bili_jct"]
         return odic
 
-    def appsign(self,params:dict,appkey:str=None,appsec:str=None)->dict:
-        """APP签名，与对应的全局函数不同，返回值为已签名的字典。"""
+    def appsign(self,params:dict,appkey:str=None,appsec:str=None)->APPSign:
+        """APP签名。"""
         if appkey is None:
             appkey=self.appkey
         if appsec is None:
             appsec=self.appsec
-        return appsign(params,appkey,appsec).signed_params
+        return appsign(params,appkey,appsec)
 
 class DanmuTools(ToolBase):
     """弹幕"""
@@ -244,7 +244,7 @@ class DanmuTools(ToolBase):
             self.on_send_danmu_start(msg)
             while idx<ml:
                 try:
-                    r=self.send_danmu(m[idx:idx+block],*an,**ad)
+                    r=await asyncio.to_thread(self.send_danmu,m[idx:idx+block],*an,**ad)
                 except GetDataError as e:
                     log.debug(f"发送弹幕失败: {e}")
                     self.erron_send_danmu(e)
@@ -305,22 +305,21 @@ class SpectatorTools(ToolBase):
 class LiveTools(ToolBase):
     """开关播"""
 
-    @overload
-    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:Literal["LiveLink"])->LiveLink: ...
-    @overload
-    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:Literal["raw"])->BiliRESTReturn["blt_T.StartLive"]: ...
-    @overload
-    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:Literal["data"])->"blt_T.StartLive": ...
-    @overload
-    def startLive(self,area:int,platform:str,build:str,version:str,*,return_type:str)->LiveLink: ...
-
-    def startLive(self,area:int,platform:str="pc_link",build:str|int="",version:str="",*,return_type:str="LiveLink"):
+    def startLive(self,area:int,platform:str="pc_link",build:str|int="",version:str="",buvid:str=None,*,return_type:str="LiveLink")->LiveLink|BiliRESTReturn["blt_T.StartLive"]|"blt_T.StartLive":
         """开始直播\n
         area: 直播分区\n
         platform: 直播平台\n
         build: 直播姬构建编号\n
         version: 直播姬版本号\n
-        return_type: 返回数据类型('raw':原始响应,'data':信息本体,其它值:LiveLink对象)"""
+        buvid: 直播姬buvid\n
+        return_type: 返回数据类型('raw':原始响应,'data':信息本体,其它值:LiveLink对象)\n
+        根据开播账号和各种使用情况来填写参数，具体看它要不要给你通过。
+        """
+        # 构建请求头
+        h={}
+        if isinstance(buvid,str):
+            h["buvid"]=buvid
+        # 构建请求体
         b=self.add_csrf({
             "room_id":self.roomid,
             "area_v2":area,
@@ -329,8 +328,9 @@ class LiveTools(ToolBase):
             "version":version,
             "access_key":"",
         })
-        b=self.appsign(b)
-        r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",b)
+        b=self.appsign(b,"aae92bc66f3edfab","af125a0d5279fd576c1b4418a3e8276d").signed_params
+        # 处理流程
+        r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",b,headers=h)
         d=r["data"]
         self.live_key=d["live_key"]
         rt=return_type

@@ -20,7 +20,7 @@ __all__=[
 if typing.TYPE_CHECKING:
     import bili_types.blm as blm_T
 
-def add_no_cmd_args(cmd_args:list[dict],cmd_name_list:dict[str,str],help:Any=None)->list[dict]:
+def add_no_cmd_args[C:list[blw.AddArgsDict]](cmd_args:C,cmd_name_list:dict[str,str])->C:
     """为cmd_args附加cmd参数
     cmd_args: 被附加参数选项字典的对象
     cmd_name_list: 一个cmd名称为键，帮助内容为值所组成的字典
@@ -255,6 +255,7 @@ class BiliLiveSaveExp(BiliLiveExp):
     @property
     def save_to_file(self)->SaveToFile:
         """暴露save_to_file参数"""
+        if not self.args:return None
         return self.args.save_to_file
 
     def p(self,*t:Any)->None:
@@ -266,7 +267,7 @@ class BiliLiveSaveExp(BiliLiveExp):
     def close(self)->None:
         """执行低层关闭流程且关闭保存输出的文件"""
         super().close()
-        if self.args.save_to_file:
+        if self.save_to_file:
             self.args.save_to_file.close()
 
 class BiliLiveMsg(BiliLiveExp):

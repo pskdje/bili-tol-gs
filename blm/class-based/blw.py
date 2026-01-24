@@ -57,8 +57,11 @@ __all__:list[str]=[
     "BLWException",
     "GetDataError",
     "WSClientError",
+    "BLWSign",
     "SavePack",
+    "ExitBLW",
     # 类
+    "WbiSign",
     "LiveMsgProto",
     "ArgsParser",
     "CookiesAgent",
@@ -246,8 +249,14 @@ class GetDataError(DataError):
 class WSClientError(BLWException):
     """blw ws 客户端异常"""
 
-class SavePack(BLWException):
+class BLWSign(BLWException):
+    """用于当做信号的异常基类"""
+
+class SavePack(BLWSign):
     """保存数据包"""
+
+class ExitBLW(BLWSign):
+    """cmd处理请求退出程序"""
 
 def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[AddArgsDict]|tuple[AddArgsDict,...])->list[str]:
     """从列表添加命令行选项
@@ -333,11 +342,24 @@ def savepack(d:dict)->bool:
         return False
     return True
 
+class WbiSign:
+    """Wbi签名结果"""
+
+    def __init__(self,query:str,signed_params:dict[str,Any],curr_time:int,sign:str):
+        """创建Wbi签名结果容纳"""
+        self.query=query
+        self.signed_params=signed_params
+        self.curr_time=curr_time
+        self.sign=sign
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.sign}>"
+
 def wbi_getMixinKey(orig:str)->str:
     """对 imgKey + subKey 的字符串顺序打乱编码，详见下面wbi_encode函数的说明"""
     from functools import reduce
     return reduce(lambda s,i:s+orig[i],wbi_mixinKeyEncTab,'')[:32]
-def wbi_encode(params:dict,imgKey:str,subKey:str)->argparse.Namespace:
+def wbi_encode(params:dict,imgKey:str,subKey:str)->WbiSign:
     """为请求参数进行 wbi 签名
     代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md
     """# 这东西一看就不想写
@@ -358,11 +380,7 @@ def wbi_encode(params:dict,imgKey:str,subKey:str)->argparse.Namespace:
     pr=params.copy()
     pr["wts"]=ct
     pr["w_rid"]=wbi_sign
-    return argparse.Namespace(
-        query=urlencode(pr),
-        signed_params=pr,
-        curr_time=ct
-    )# 偷懒
+    return WbiSign(urlencode(pr),pr,ct,wbi_sign)
 
 class LiveMsgProto(typing.NamedTuple):
     """信息流数据包映射"""
@@ -478,7 +496,7 @@ class BiliLiveWS:
     """默认请求超时时间"""
     no_run_enable_cmd:bool=False
     """不运行不支持某个cmd的回退操作"""
-    cmd_args:list=[]
+    cmd_args:list[AddArgsDict]=[]
     """添加给cmd处理使用的命令行参数"""
     only_count_cmd:list[str]=[]
     """只计数cmd的列表"""
@@ -648,8 +666,8 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             raise GetDataError(f"{rn}的code为{d['code']}，信息: {msg}",type="api",code=d["code"],message=msg)
         return d
 
-    def wbi_encode(self,params:dict)->argparse.Namespace:
-        """为请求参数进行 wbi 签名
+    def wbi_encode(self,params:dict)->WbiSign:
+        """为请求参数进行 wbi 签名，使用类的imgKey和subKey。
         详见同名模块级函数的说明
         """
         return wbi_encode(params,self.wbi_imgKey,self.wbi_subKey)
@@ -891,6 +909,9 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
                 log.debug(f"代码期望保存数据包，信息: {sp}")
                 if DEBUG or self.args.save_unknow_datapack:
                     savepack(pack)
+            except ExitBLW as e:
+                log.debug(f"代码想要退出程序，信息: {e}")
+                sys.exit()
             except:
                 self.error("出现异常的数据包:\n"+json.dumps(pack,ensure_ascii=False,indent="\t"))
                 this_error_count+=1
@@ -980,6 +1001,10 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             self.error(f"ws_client出现错误")
             self.close_hpst("异常")
             raise WSClientError("出现异常")
+        except SystemExit:
+            log.info("检测到退出异常，停止运行")
+            self.close_hpst("退出异常")
+            raise
         except KeyboardInterrupt:
             log.info("中断键按下，停止运行")
             self.close_hpst("中断键按下")
@@ -1008,6 +1033,10 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
         except WSClientError as e:
             self.p(str(e))
             sys.exit(1)
+        except SystemExit:
+            self.p("cmd处理退出")
+            self.print_cmd_count()
+            raise
         except KeyboardInterrupt:
             self.p("关闭")
             self.print_cmd_count()
