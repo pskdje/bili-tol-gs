@@ -179,6 +179,18 @@ Python:
 
 **返回值:** 代表操作结果的字符串
 
+#### 方法 `ToolBase.split_biliup_cookie`
+
+处理[biliup](https://github.com/biliup/biliup)的[cookies.json](https://github.com/biliup/biliup-rs)存储的cookie数据。
+
+若参数输入为`Path`对象将尝试读取该路径指向的文件（异常将会传播）。
+
+该方法将会直接更新cookies属性数据。
+
+*参数* `data` : JSON解析后的dict数据或`Path`对象
+
+*可能抛出异常* `TypeError` : 读取文件后的数据或原始输入数据的类型不是dict类型时抛出
+
 #### 方法 `ToolBase.read_cookie`
 
 读取cookie并解析。

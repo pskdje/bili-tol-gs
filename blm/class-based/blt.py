@@ -98,7 +98,7 @@ class ToolBase(blm.BiliLiveExp):
     """基本工具"""
 
     def set_cookie(self,data:dict[str,str]|Any|None)->str:
-        """设置cookie。若输入None将清除所有已存在的cookie"""
+        """设置cookie，只支持特定类型。若输入None将清除所有已存在的cookie"""
         cks=self.cookies
         if data is None:
             cks.clear()
@@ -115,6 +115,7 @@ class ToolBase(blm.BiliLiveExp):
             return "cookiejar"
         return "none"
 
+    # 处理基本cookie存储数据
     def split_kv_cookie(self,data:str)->dict[str,str]:
         """从字符串获取cookie"""
         return self.set_cookie(blw.split_kv_cookie(data))
@@ -143,8 +144,22 @@ class ToolBase(blm.BiliLiveExp):
             self.cookies.update(c)
             return "update"
 
+    # 处理其它cookie存储数据
+    def split_biliup_cookie(self,data:dict|Path):
+        """处理biliup的cookies.json文件"""
+        if isinstance(data,Path):
+            with data.open("rt")as f:
+                d=json.load(f)
+        else:
+            d=data
+        if not isinstance(d,dict):raise TypeError("数据不是dict对象")
+        for i in d["cookie_info"]["cookies"]:
+            self.cookies.set(i["name"],i["value"],domain=".bilibili.com",secure=bool(i["secure"]),expires=i["expires"],rest={"HttpOnly":i["http_only"]})
+        return "set"
+
+    # 读取cookie
     def read_cookie(self,data:str)->dict[str,str]|None:
-        """读取cookie"""
+        """读取常见cookie数据"""
         p=Path(data)
         if not p.is_file():
             return self.split_kv_cookie(data)
