@@ -1,7 +1,6 @@
 """全部该项目已知cmd处理
 数据分析由我自己进行，不保证准确，请注意时效，日期:2025/12/01，操作:修改
 已存在的cmd很难确认是否需要更新
-可参考 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md 页面，但存在时效性。
 """
 
 import blw

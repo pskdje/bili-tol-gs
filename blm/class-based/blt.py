@@ -6,6 +6,7 @@ import blw,blm
 import time,json,asyncio
 import http.cookiejar as cookiejar
 from pathlib import Path
+from dataclasses import dataclass
 from typing import NamedTuple,Any,Self,Literal,overload,TYPE_CHECKING
 from blw import GetDataError,log,BiliRESTReturn
 
@@ -37,26 +38,24 @@ DEFAULT_APPsec="560c52ccd288fed045859ed18bffd973"
 
 class APPSign:
     """APP签名返回"""
-    def __init__(self,query:str,signed_params:dict[str,Any],sign:str):
-        """记录"""
-        self.query=query # 查询参数
-        self.signed_params=signed_params # 查询字典
-        self.sign=sign # 签名字符串
+    query:str
+    """查询参数"""
+    signed_params:dict[str,Any]
+    """查询字典"""
+    sign:str
+    """签名字符串"""
     def __str__(self):
         """返回签名结果字符串"""
         return self.query
-    def __repr__(self):
-        """返回构造表达式"""
-        return f"APPSign({repr(self.query)}, {repr(self.signed_params)}, {repr(self.sign)})"
 
     @staticmethod
     def app_sign(params:dict,appkey:str=DEFAULT_APPkey,appsec:str=DEFAULT_APPsec)->Self:
         """签名"""
         return appsign(params,appkey,appsec)
 
-def appsign(params:dict,appkey:str,appsec:str)->APPSign:
+def appsign(params:dict[str,Any],appkey:str,appsec:str)->APPSign:
     """APP签名
-    代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/APP.md
+    代码来自 [链接已失效](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/APP.md)
     """# 这玩意也不想自己写
     from urllib.parse import urlencode
     from hashlib import md5

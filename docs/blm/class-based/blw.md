@@ -289,6 +289,8 @@ cmd处理请求退出程序。
 
 Wbi签名结果存储。
 
+是一个数据类。
+
 #### 属性 `WbiSign.query`
 
 已签名查询参数字符串。
@@ -304,12 +306,6 @@ Wbi签名结果存储。
 #### 属性 `WbiSign.sign`
 
 签名字符串。
-
-#### 方法 `WbiSign.__init__`
-
-通过输入的信息创建Wbi签名结果容纳。
-
-参数名称和描述与类属性相同。
 
 #### 方法 `WbiSign.__repr__`
 
@@ -327,7 +323,7 @@ Wbi签名结果存储。
 
 为请求参数进行 wbi 签名。
 
-代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md
+代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md (已失效)
 
 *参数* `params` : 要被签名的参数字典
 
@@ -377,9 +373,15 @@ Wbi签名结果存储。
 
 代理从参数输入的Cookie信息。
 
+主要用于防止错误记录或日志文件因为记录Cookie所导致文件大小较大和 `args` 属性泄露数据。
+
 支持 `__len__` 、 `__getitem__` 、 `__iter__` 、 `__contains__` 、 `key` 、 `values` 、 `items` 字典操作。
 
 更多操作请访问 `cookies` 属性。
+
+#### 属性 `CookiesAgent.__slots__`
+
+限制该类的属性。
 
 #### 方法 `CookiesAgent.__init__`
 
@@ -921,6 +923,6 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 其它信息请查看源代码。
 
-## 可用的参考资料
+## 推荐的参考资料
 
-[bilibili-API-collect的直播信息流](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/message_stream.md)文档（或者我的更新分支）
+[bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/message_stream.md)文档（已失效，可参见各处存档）

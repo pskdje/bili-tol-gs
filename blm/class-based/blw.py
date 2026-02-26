@@ -2,7 +2,7 @@
 包括信息流服务器获取、认证，ws连接功能。
 使用的第三方库: requests , websockets
 可选的第三方库: brotli
-数据包格式参考自: https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md 和 直播开放平台
+数据包格式参考自: [已失效](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md) 和 直播开放平台
 本文件只实现基本功能
 本文件自带一个异常保存功能，出现异常时调用error函数即可。
 但要注意：它能记录的信息是有限的，并要尽快记录一些信息。因此，你可能需要自行处理一些信息。
@@ -16,6 +16,7 @@ import requests
 import websockets
 import logging.handlers
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Any,NoReturn
 import collections.abc as c_abc
 try:# 兼容3.14之后
@@ -34,6 +35,7 @@ __all__:list[str]=[
     "VERSIONINFO",
     "LOGDIRPATH",
     "ENCODING",
+    "log",
     "wbi_mixinKeyEncTab",
     # 类型
     "AddArgsDict",
@@ -98,7 +100,7 @@ elif sys.flags.debug:
 elif sys.flags.dev_mode:
     DEBUG=True
 
-def error(v:dict[Any]=None,d:Any=None)->None:
+def error(v:dict[str,Any]=None,d:Any=None)->None:
     """记录异常
     v: 额外的变量列表
     d: 额外信息
@@ -342,16 +344,13 @@ def savepack(d:dict)->bool:
         return False
     return True
 
+@dataclass
 class WbiSign:
     """Wbi签名结果"""
-
-    def __init__(self,query:str,signed_params:dict[str,Any],curr_time:int,sign:str):
-        """创建Wbi签名结果容纳"""
-        self.query=query
-        self.signed_params=signed_params
-        self.curr_time=curr_time
-        self.sign=sign
-
+    query:str
+    signed_params:dict[str,Any]
+    curr_time:int
+    sign:str
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.sign}>"
 
@@ -359,9 +358,9 @@ def wbi_getMixinKey(orig:str)->str:
     """对 imgKey + subKey 的字符串顺序打乱编码，详见下面wbi_encode函数的说明"""
     from functools import reduce
     return reduce(lambda s,i:s+orig[i],wbi_mixinKeyEncTab,'')[:32]
-def wbi_encode(params:dict,imgKey:str,subKey:str)->WbiSign:
+def wbi_encode(params:dict[str,Any],imgKey:str,subKey:str)->WbiSign:
     """为请求参数进行 wbi 签名
-    代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md
+    代码来自 [链接已失效](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md)
     """# 这东西一看就不想写
     from urllib.parse import urlencode
     from hashlib import md5
@@ -419,7 +418,9 @@ class ArgsParser(argparse.ArgumentParser):
         return [arg_line]
 
 class CookiesAgent:
-    """代理参数输入的Cookie信息"""
+    """代理参数输入的Cookie信息，防止记录过大和数据泄露"""
+
+    __slots__=("cookies",)
 
     def __init__(self,cookies:dict):
         """初始化Cookie信息代理"""
@@ -528,9 +529,6 @@ class BiliLiveWS:
     def __repr__(self)->str:
         """对象概述"""
         return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}>"
-    def __del__(self)->None:
-        """清除"""
-        self.close()
 
     @property
     def headers(self):
@@ -542,7 +540,7 @@ class BiliLiveWS:
         return self.requests_session.cookies
 
     def error(self,d:Any=None,**v:Any)->None:
-        """记录异常，附带该类的部分变量"""
+        """记录异常，附带该类的部分变量，可通过剩余关键字参数扩展列表"""
         error({
             "UA":self.UA,
             "headers":self.headers,
@@ -553,7 +551,7 @@ class BiliLiveWS:
             "hpst":self.hpst,
             "args":self.args,
             "pack_count":self.pack_count,
-            **v,# 可通过剩余参数扩展列表
+            **v,
         },d)
     def p(self,*t:Any)->None:
         """输出文本"""
@@ -666,7 +664,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             raise GetDataError(f"{rn}的code为{d['code']}，信息: {msg}",type="api",code=d["code"],message=msg)
         return d
 
-    def wbi_encode(self,params:dict)->WbiSign:
+    def wbi_encode(self,params:dict[str,Any])->WbiSign:
         """为请求参数进行 wbi 签名，使用类的imgKey和subKey。
         详见同名模块级函数的说明
         """

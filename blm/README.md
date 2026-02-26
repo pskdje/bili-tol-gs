@@ -84,6 +84,6 @@ python "bili live msg.py" [roomid]
 
 ## 参考
 
-[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) 提供数据包格式和URL
+[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)(已失效) 提供数据包格式和URL
 
 [open-live.bilibili.com](https://open-live.bilibili.com/document/) 新版数据包解析逻辑支持，提供开放API

@@ -6,7 +6,7 @@
 
 接口均为获取数据封装，返回值若无特别备注均表示返回接口信息本体。如何处理返回信息请自行研究或者寻找文档。
 
-本文档并不会告诉你哪些接口需要登录哪些不需要。想知道的话自己查看源代码并在其它地方如[bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)中搜索，实在看不懂那就登录吧。
+本文档并不会告诉你哪些接口需要登录哪些不需要。想知道的话自己查看源代码并在其它地方如[已失效项目](https://github.com/SocialSisterYi/bilibili-API-collect)中搜索，实在看不懂那就登录吧。
 
 ## 依赖
 
@@ -71,7 +71,7 @@ Python:
 
 进行APP查询参数签名。
 
-代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/APP.md
+代码来自 https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/APP.md (已失效)
 
 *参数* `params` : 要被签名的查询参数字典
 
@@ -319,8 +319,6 @@ Python:
 
 参数color和mode必须选一个提供，并且不能同时存在。
 
-详见: [issue(comment)](https://github.com/SocialSisterYi/bilibili-API-collect/issues/1236#issuecomment-2849019923) [BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/danmaku.md#%E8%AE%BE%E7%BD%AE%E5%BC%B9%E5%B9%95%E6%A0%B7%E5%BC%8F)
-
 读取 `roomid` 属性。
 
 *参数* `color` : 十六进制颜色值，从[DanmuTools.get_dm_config](#方法-danmutoolsget_dm_config)获取可用值
@@ -494,8 +492,6 @@ Python:
 发布回放片段
 
 从av_title参数开始，建议使用关键字参数
-
-参数解释见[BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/live_replay.md#%E6%8A%95%E7%A8%BF%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE%E7%89%87%E6%AE%B5)或我的更新分支
 
 *参数* `live_key` : 标记直播场次的key
 
