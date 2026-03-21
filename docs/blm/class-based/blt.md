@@ -37,6 +37,8 @@ Python:
 
 包装APP签名返回数据，由[appsign](#函数-appsign)函数返回。
 
+是一个数据类。
+
 #### 属性 `APPSign.query`
 
 查询参数，一般已进行过URL编码。
@@ -49,19 +51,11 @@ Python:
 
 签名字符串。
 
-#### 方法 `APPSign.__init__`
-
-初始化所有属性。
-
-参数名与属性名相同，作用相同。不建议直接实例该对象，除非你要重写签名算法。
 
 #### 方法 `APPSign.__str__`
 
 返回 `query` 属性。
 
-#### 方法 `APPSign.__repr__`
-
-返回构造表达式。
 
 #### 静态方法 `APPSign.app_sign`
 

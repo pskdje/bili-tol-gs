@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 DEFAULT_APPkey="1d8b6e7d45233436"
 DEFAULT_APPsec="560c52ccd288fed045859ed18bffd973"
 
+@dataclass
 class APPSign:
     """APP签名返回"""
     query:str

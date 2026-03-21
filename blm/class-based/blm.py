@@ -309,7 +309,6 @@ class BiliLiveMsg(BiliLiveExp):
         if isinstance(a.cookie,CookiesAgent):
             for ck,cv in a.cookie.items():
                 self.cookies.set(ck,cv,domain=".bilibili.com")
-        self.get_login_nav()
         if "buvid3" not in self.cookies:
             self.set_buvid3_4()
         try:
@@ -342,6 +341,7 @@ class BiliLiveMsg(BiliLiveExp):
         if a.get_room_playurl:
             self.print_playurl()
         try:
+            self.get_login_nav()
             info=self.get_ws_info()
         except GetDataError as e:
             self.p(str(e))
