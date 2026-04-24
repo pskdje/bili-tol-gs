@@ -135,8 +135,6 @@ REST API 返回信息注解。
 
 该类支持下标操作 (`[]`) ，标注信息本体的内容。
 
-> 注意：若使用Python 3.12 ，需要删除类型形参的默认值，否则会语法错误。
-
 ### 类型 `LiveMessageStreamDict`
 
 直播信息流数据包注解，必须存在cmd属性用于识别。
@@ -148,8 +146,6 @@ REST API 返回信息注解。
 直播信息流数据包注解，在原有的基础上添加常用的data属性。
 
 该类支持下标操作 (`[]`) ，标注data属性的内容。
-
-> 注意：若使用Python 3.12 ，需要删除类型形参的默认值，否则会语法错误。
 
 ### 类型 `CmdHandleProto`
 
@@ -454,6 +450,14 @@ Wbi签名结果存储。
 #### 属性 `BiliLiveWS.hpst`
 
 循环发送心跳包任务暂存，初始值 `None` ，由[ws_client](#异步方法-bililivewsws_client)设置。
+
+#### 属性 `BiliLiveWS.send_heartbeat_time`
+
+心跳包发送时间戳。特殊情况下可用于确认连接是否有效。
+
+#### 属性 `BiliLiveWS.reply_heartbeat_time`
+
+心跳包回复时间戳。特殊情况下可用于确认连接是否有效。
 
 #### 属性 `BiliLiveWS.args`
 

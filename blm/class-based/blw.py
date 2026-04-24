@@ -73,7 +73,7 @@ __all__:list[str]=[
 __version__:str="3"
 DEBUG:bool=False
 TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
-UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
+UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0"
 VERSIONINFO:str=f"""Python/{sys.version.split()[0]}({sys.platform}) blw/{__version__} requests/{requests.__version__} websockets/{websockets.__version__}{" brotli/"+brotli.version if brotli else""}"""
 LOGDIRPATH=Path("bili_live_ws_log")
 ENCODING:str="utf_8"
@@ -173,7 +173,7 @@ class AddArgsDict(typing.TypedDict,total=False):
     metavar:str
     dest:str
 
-class BiliRESTReturn[D=dict](typing.TypedDict,total=False):
+class BiliRESTReturn[D:dict](typing.TypedDict,total=False):
     """REST API 返回信息注解\n
     须知：不同接口的返回信息不一定相同
     """
@@ -195,7 +195,7 @@ class LiveMessageStreamDict(typing.TypedDict,total=False):
     """
     cmd:typing.Required[str]
     """数据包cmd"""
-class LMSD_data[D=dict](LiveMessageStreamDict):
+class LMSD_data[D:dict](LiveMessageStreamDict):
     """直播信息流数据包注解\n
     在原有的基础上添加常用的data属性
     """
@@ -491,6 +491,10 @@ class BiliLiveWS:
     """用户uid"""
     hpst:asyncio.Task=None
     """循环发送心跳包任务暂存"""
+    send_heartbeat_time:float=0
+    """心跳包发送时间戳"""
+    reply_heartbeat_time:float=0
+    """心跳包回复时间戳"""
     args:argparse.Namespace=None
     """命令行参数存储"""
     request_timeout:float|tuple=30
@@ -817,6 +821,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
         try:
             while True:
                 await ws.send(pl(self.create_heartbeat()))
+                self.send_heartbeat_time=time.time()
                 await asyncio.sleep(30)
         except(# 捕捉正常关闭时会引发的异常
             KeyboardInterrupt,
@@ -927,7 +932,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
         """信息流ws客户端"""
         log.info(f"连接服务器: {url} ,token: {token}")
         self.on_conn_ws_server()
-        async with websockets.connect(url,user_agent_header=self.UA)as ws:
+        async with websockets.connect(url,user_agent_header=self.UA,ping_timeout=None)as ws:
             log.info("服务器已连接")
             self.on_conn_ws_server_ok()
             jrp=self.join_room_pack(token,self.uid)
@@ -941,6 +946,7 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
                 if p[2]==1 and p[3]==3:
                     rq=self.print_popularity(msg[16:20])
                     log.debug(f"处理后人气值: {rq}, 原始数据: {p[5]}")
+                    self.reply_heartbeat_time=time.time()
                 elif p[2]==1 and p[3]==8:
                     log.debug(f"认证回复: {p[5]}")
                     self.on_cert_pack_reply(p[5])
@@ -981,7 +987,9 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             asyncio.run(self.ws_client(f"wss://{host}/sub",token),debug=True if DEBUG else None)
         except websockets.ConnectionClosedError as e:
             log.warning("连接关闭: "+str(e))
-            self.error()
+            self.error(
+                heartbeat_pack_time=[self.send_heartbeat_time,self.reply_heartbeat_time],# 心跳包时间 [发送,回复]
+            )
             self.close_hpst("连接关闭")
             raise WSClientError("连接关闭: "+str(e))
         except WSClientError:
