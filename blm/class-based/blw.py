@@ -111,6 +111,7 @@ def error(v:dict[str,Any]=None,d:Any=None)->None:
     fp=dp/f"{time.time_ns()}.txt"
     def nsf():# 未成功保存异常时调用
         log.exception(f"未成功保存错误文件，文件路径: {fp.resolve()}",stacklevel=2)
+        print("原定保存错误信息的路径:",str(fp.resolve()))
         print("=====错误堆栈=====")
         traceback.print_exc()
         print("="*18)
@@ -119,7 +120,7 @@ def error(v:dict[str,Any]=None,d:Any=None)->None:
             log.info("新建保存错误文件用目录")
             dp.mkdir()
         with open(fp,"w",encoding=ENCODING)as f:
-            f.write("哔哩哔哩直播信息流\n时间: ")
+            f.write("哔哩哔哩直播信息流错误记录\n时间: ")
             f.write(time.strftime("%Y/%m/%d-%H:%M:%S%z"))
             f.write("\n版本信息: "+VERSIONINFO)
             f.write("\n平台标识: "+str(sys.platform))
@@ -127,6 +128,7 @@ def error(v:dict[str,Any]=None,d:Any=None)->None:
             f.write("\n启动时间戳: "+str(starttime))
             f.write("\n累计错误数: "+str(cumulative_error_count))
             f.write("\n命令行: "+str(sys.orig_argv))
+            f.write("\n当前工作目录: "+str(Path.cwd()))
             f.write("\n变量DEBUG的值: "+str(DEBUG))
             f.write("\n\n异常信息:\n")
             f.write("str(exception)= \""+str(sys.exc_info()[1])+"\"\n")
