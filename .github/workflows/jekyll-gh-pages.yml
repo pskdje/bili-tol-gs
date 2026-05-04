@@ -28,6 +28,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: 设置语言环境
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y language-pack-zh-hans
+          sudo locale-gen zh_CN.UTF-8
+          sudo update-locale LANG=zh_CN.UTF-8
+          echo "LANG=zh_CN.UTF-8" >> $GITHUB_ENV
+          echo "LC_ALL=zh_CN.UTF-8" >> $GITHUB_ENV
       - name: 检出存储库
         uses: actions/checkout@v6
       - name: 设置 Pages
@@ -40,7 +48,9 @@ jobs:
           # 选择输出位置
           destination: ./_site
       - name: 清理源文件
-        run: find ./_site -name "*.md" -type f -print -delete
+        run: |
+          chmod -R u+w ./_site
+          find ./_site -name "*.md" -type f -print -delete
       - name: 上传Page构建存档
         uses: actions/upload-pages-artifact@v5
         with:
