@@ -41,8 +41,8 @@ jobs:
           destination: ./_site
       - name: 清理源文件
         run: |
-          chmod -R u+w ./_site
-          find ./_site -name "*.md" -type f -print -delete
+          sudo chmod -R +w ./_site
+          sudo find ./_site -name "*.md" -type f -print -delete
       - name: 上传Page构建存档
         uses: actions/upload-pages-artifact@v5
         with:
