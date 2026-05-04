@@ -29,9 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出存储库
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 设置 Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: 使用 Jekyll 构建
         uses: actions/jekyll-build-pages@v1
         with:
@@ -39,8 +39,13 @@ jobs:
           source: ./docs
           # 选择输出位置
           destination: ./_site
+      - name: 清理源文件
+        run: find ./_site -name "*.md" -type f -print -delete
       - name: 上传Page构建存档
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
+        with:
+          # 指定上传的构建目录
+          path: ./_site
 
   # 部署作业
   deploy:
@@ -52,4 +57,4 @@ jobs:
     steps:
       - name: 部署到 GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
