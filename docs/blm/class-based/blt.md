@@ -423,6 +423,16 @@ Python:
 
 *关键字参数* `platform` : 直播平台
 
+#### 方法 `RoomTools.getLiveAreaList`
+
+获取直播分区列表。
+
+*参数* `show_pinyin` : 获取分区拼音
+
+#### 方法 `RoomTools.getMyChooseLiveArea`
+
+获取“我”选过的直播分区（其实只要知道直播间id就可以获取）。
+
 ### 类 `LiveReplay`
 
 直播回放相关接口。

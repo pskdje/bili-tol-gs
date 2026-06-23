@@ -447,6 +447,14 @@ Wbi签名结果存储。
 
 登录用户的UID，初始值 `0` ，由[get_uid](#方法-bililivewsget_uid)或[get_login_nav](#方法-bililivewsget_login_nav)设置，也可自行设置。
 
+#### 属性 `BiliLiveWS.asyncio_loop`
+
+实例使用的事件循环引用。
+
+#### 属性 `BiliLiveWS.ws_client_obj`
+
+WebSocket 客户端对象。
+
 #### 属性 `BiliLiveWS.hpst`
 
 循环发送心跳包任务暂存，初始值 `None` ，由[ws_client](#异步方法-bililivewsws_client)设置。
@@ -493,6 +501,10 @@ Wbi签名结果存储。
 
 cmd计数容纳，由__init__初始化为 `[]` 。
 
+#### 属性 `BiliLiveWS._exit_sign`
+
+退出信号，由__init__初始化为 `False` 。
+
 #### 属性 `BiliLiveWS.requests_session`
 
 网络请求会话，由__init__初始化为 `requests.Session` 。
@@ -527,11 +539,7 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 #### 方法 `BiliLiveWS.__repr__`
 
-返回对象概述，有类名、roomid、uid。
-
-#### 方法 `BiliLiveWS.__del__`
-
-调用 [`close`](#方法-bililivewsclose) 方法。
+返回对象概述，有类名、 roomid 、 uid 等。
 
 #### 方法 `BiliLiveWS.error`
 
@@ -559,7 +567,7 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 #### 方法 `BiliLiveWS.close`
 
-关闭请求会话和调用 [`close_hpst`](#方法-bililivewsclose_hpst) 方法。
+执行一些关闭操作，查看源代码来了解具体的流程。
 
 #### 方法 `BiliLiveWS.on_conn_ws_server`
 
@@ -589,6 +597,16 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 **错误事件**，分割数据包时出现错误的提示信息，将传入原始字节串。
 
+#### 方法 `BiliLiveWS.run_self_loop`
+
+运行异步函数到自身事件循环中。
+
+需要事件循环正在运行且没有关闭信号（读取 [`_exit_sign`](#属性-bililivews_exit_sign) 属性）。
+
+*参数* `coro` : 异步函数
+
+**返回值:** 各类运行对象或 `None`
+
 #### 方法 `BiliLiveWS.get_rest_data`
 
 获取API数据，任意发送数据参数不为None时将使用POST请求。
@@ -598,6 +616,8 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 *参数* `tip` : 操作提示，用于生成错误和日志
 
 *参数* `url` : 要请求的URL
+
+*参数* `params` : 要使用的查询参数，由 requests 库处理
 
 *参数* `data` : 要发送的数据，类型urlencode或其它（需自定义请求头的内容类型）
 
@@ -835,9 +855,11 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 直播信息流ws客户端，拥有连接、认证、心跳包发送、数据包分类、基础处理功能，详见源代码。
 
+调用时将会记录当前事件循环和 ws 连接对象。
+
 连接完成认证包发送后，将创建[重复发送心跳包](#异步方法-bililivewsloop_send_hp)任务，引用保存在[hpst](#属性-bililivewshpst)属性。
 
-若想退出，可按下中断键引发中断键按下异常退出。若是通过asyncio任务启动，可通过调用任务的cancel关闭。若通过其它方法启动请自行研究如何退出。
+若想退出，可按下中断键引发中断键按下异常退出。若是通过asyncio任务启动，可通过调用任务的cancel关闭。
 
 *参数* `url` : WS链接
 
@@ -855,6 +877,10 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 **返回值:** 无( `None` )
 
+#### 异步方法 `BiliLiveWS.close_ws_client`
+
+关闭 ws 客户端，并清理 [`ws_client_obj`](#属性-bililivewsws_client_obj) 属性。
+
 #### 方法 `BiliLiveWS.run_blw_client`
 
 运行ws客户端。
@@ -862,6 +888,8 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 该方法将使用 `asyncio.run` 启动[`ws_client`](#异步方法-bililivewsws_client)。
 
 将大部分异常封装为 `WSClientError` 并抛出，同时记录原始错误信息。
+
+退出时将设置 [`_exit_sign`](#属性-bililivews_exit_sign) 属性为 `True` 。
 
 *参数* `host` : 直播信息流的域名和端口
 
