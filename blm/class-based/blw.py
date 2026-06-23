@@ -491,13 +491,17 @@ class BiliLiveWS:
     """房间号"""
     uid:int=0
     """用户uid"""
-    hpst:asyncio.Task=None
+    asyncio_loop:asyncio.EventLoop|None=None
+    """使用的事件循环引用"""
+    ws_client_obj:websockets.ClientConnection|None=None
+    """WebSocket 客户端对象"""
+    hpst:asyncio.Task|None=None
     """循环发送心跳包任务暂存"""
     send_heartbeat_time:float=0
     """心跳包发送时间戳"""
     reply_heartbeat_time:float=0
     """心跳包回复时间戳"""
-    args:argparse.Namespace=None
+    args:argparse.Namespace|None=None
     """命令行参数存储"""
     request_timeout:float|tuple=30
     """默认请求超时时间"""
@@ -525,6 +529,8 @@ class BiliLiveWS:
         """要被计数的cmd列表"""
         self.pack_count:dict[str,int]={}
         """cmd计数容纳"""
+        self._exit_sign:bool=False
+        """退出信号"""
         rsess=requests.Session()
         self.requests_session=rsess
         """网络会话"""
@@ -532,9 +538,11 @@ class BiliLiveWS:
         # 已在类级别进行注释，不重复注释
         self.uid:int=0
         self.hpst=None
+        self.asyncio_loop=None
+        self.ws_client_obj=None
     def __repr__(self)->str:
         """对象概述"""
-        return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}>"
+        return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}{'; Exit'if self._exit_sign else''}>"
 
     @property
     def headers(self):
@@ -554,7 +562,6 @@ class BiliLiveWS:
             "sequence":self.sequence,
             "roomid":self.roomid,
             "uid":self.uid,
-            "hpst":self.hpst,
             "args":self.args,
             "pack_count":self.pack_count,
             **v,
@@ -567,8 +574,11 @@ class BiliLiveWS:
         self.p(f"[{name}]",*data)
     def close(self)->None:
         """执行低层关闭流程"""
-        self.requests_session.close()
         self.close_hpst()
+        self.run_self_loop(self.close_ws_client)
+        self.requests_session.close()
+        self.asyncio_loop=None
+        self.ws_client_obj=None
 
     # 事件，主要在主程序中显示提示
     def on_conn_ws_server(s)->None:
@@ -594,22 +604,41 @@ class BiliLiveWS:
         """分割数据包时出现错误的提示信息，将传入原始字节串"""
         s.p("无法解析数据")
 
+    def run_self_loop[T](self,coro:c_abc.Callable[[],c_abc.Coroutine[None,None,T]])->asyncio.Task[T]|asyncio.Future[T]|None:
+        """运行到自身事件循环"""
+        if self.asyncio_loop is None:return
+        if not self.asyncio_loop.is_running():return
+        if self._exit_sign:return
+        try:
+            rl=asyncio.get_running_loop()
+        except RuntimeError:
+            rl=None
+        if rl==self.asyncio_loop:
+            return asyncio.create_task(coro())
+        else:
+            return asyncio.run_coroutine_threadsafe(coro(),self.asyncio_loop)
+
     def get_rest_data(self,tip:str,url:str,
+        params:dict[str,Any]|None=None,
         data:dict|bytes|None=None,json:dict|list=None,
         headers:dict|None=None,cookies:dict|None=None,
         timeout:float|tuple[float,float]=0,
         err_code_raise:bool=True
     )->BiliRESTReturn:
         """获取API数据
+
         任意发送数据参数不为None时将使用POST请求
+
         tip: 操作提示，用于生成错误和日志
         url: 请求的URL
-        data: 要发送的数据，类型urlencode或其它（需自定义请求头的内容类型）
-        json: 要发送的数据，类型JSON
+        params: 要使用的查询参数，由 requests 库处理
+        data: 要发送的数据，类型 urlencode 或其它（需自定义请求头的内容类型）
+        json: 要发送的数据，类型 JSON
         headers: 要额外使用的请求头
         cookies: 要额外使用的cookie
         timeout: 指定本次请求的超时时间
         err_code_raise: 若为真值，响应内容的code不为0时将抛出错误
+
         返回值: 经过json解析后的响应内容
         """
         if not isinstance(tip,str):
@@ -622,9 +651,10 @@ class BiliLiveWS:
         if isinstance(timeout,tuple) or timeout>0:
             rto=timeout
         log.debug(f"""[请求]{url}
-headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
+headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\ntimeout: {rto}
 已有请求头: {rsess.headers}\n已有cookie: {rsess.cookies}""",stacklevel=2)
         reqkwa={
+            "params":params,
             "headers":rqh,
             "cookies":cks,
             "timeout":rto,
@@ -933,8 +963,10 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
     async def ws_client(self,url:str,token:str)->NoReturn:
         """信息流ws客户端"""
         log.info(f"连接服务器: {url} ,token: {token}")
+        self.asyncio_loop=asyncio.get_running_loop()
         self.on_conn_ws_server()
-        async with websockets.connect(url,user_agent_header=self.UA,ping_timeout=None)as ws:
+        async with websockets.connect(url,user_agent_header=self.UA,ping_timeout=None,close_timeout=2)as ws:
+            self.ws_client_obj=ws
             log.info("服务器已连接")
             self.on_conn_ws_server_ok()
             jrp=self.join_room_pack(token,self.uid)
@@ -983,6 +1015,11 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             return
         self.hpst.cancel(msg)
         self.hpst=None
+    async def close_ws_client(self):
+        """关闭ws客户端"""
+        if not self.ws_client_obj:return
+        await self.ws_client_obj.close()
+        self.ws_client_obj=None
     def run_blw_client(self,host:str,token:str)->None:
         """运行ws客户端"""
         try:
@@ -1018,6 +1055,8 @@ headers: {rqh}\ncookies: {cks}\ndata: {data}\njson: {json}\ntimeout: {rto}
             self.close_hpst("中断键按下")
             log.debug(f"数据包计数: {self.pack_count}")
             raise
+        finally:
+            self._exit_sign=True
     def start(self)->NoReturn:
         """一般启动函数"""
         log.info("使用一般启动函数开始运行")

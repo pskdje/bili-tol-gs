@@ -414,6 +414,17 @@ class RoomTools(ToolBase):
             b["title"]=title
         return self.get_rest_data("预更新直播信息","https://api.live.bilibili.com/xlive/app-blink/v1/preLive/UpdatePreLiveInfo",b)["data"]
 
+    def getLiveAreaList(self,show_pinyin:bool=False)->"blt_T.GetLiveAreaList":
+        """获取直播分区列表\n
+        show_pinyin: 获取拼音"""
+        b={}
+        if show_pinyin:
+            b["show_pinyin"]=1
+        return self.get_rest_data("获取直播分区列表","https://api.live.bilibili.com/room/v1/Area/getList",params=b)["data"]
+    def getMyChooseLiveArea(self)->"blt_T.GetMyChooseLiveArea":
+        """获取“我”选过的直播分区（其实只要知道直播间id就可以获取）"""
+        return self.get_rest_data("获取选过的直播分区",f"https://api.live.bilibili.com/room/v1/Area/getMyChooseArea?roomid={self.roomid}")["data"]
+
 class LiveReplay(ToolBase):
     """直播回放"""
 
