@@ -109,9 +109,11 @@ class BLMColor(blm.BiliLiveExp):
         """渲染用户颜色"""
         return RGPL.sub(TUSR+"\\1"+CD,msg)
 
-    def pct(self,name:str,*d:Any,b:str="",**t:"print参数")->None:
+    def pct(self,name:str,*d:Any,b:str="")->None:
         """统一按照一定样式输出cmd处理后文本
+
         额外拥有添加时间的功能
+
         可用位置参数b来定义背景色(理论上)
         """
         if not isinstance(name,str):
@@ -127,9 +129,9 @@ class BLMColor(blm.BiliLiveExp):
             else:
                 m=""
             if m:
-                self.p(f"{b}{C_16}{m}{CD} {TRTG}{DB}[{name}]{DF}{b}",*d,DF,**t)
+                self.p(f"{b}{C_16}{m}{CD} {TRTG}{DB}[{name}]{DF}{b}",*d,DF)
                 return
-        self.p(f"{b}{TRTG}{DB}[{name}]{DF}{b}",*d,DF,**t)
+        self.p(f"{b}{TRTG}{DB}[{name}]{DF}{b}",*d,DF)
 
 class CoreCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
     """核心cmd处理"""
@@ -282,6 +284,14 @@ class FrequentCmdHandle(BLMColor,blm.BiliLiveBlackWordExp):
             s.pct("观看",f"{TNUM}{d['num']}{CD} 人看过; {TKEY}text_large: {TSTR}{d['text_large']}")
         else:
             s.pct("观看",f"{TNUM}{d['num']}{CD} 人看过")
+    def l_POPULARITY_CHANGE(s,p):
+        """人气"""
+        d=p["data"]
+        if d["type"]==2:
+            s.pct("人气",f"{TNUM}{d['popularity']}{CD} ,文本: {d['popularity_text']}")
+        else:
+            s.pct("支持",f"未知的人气类型 {d["type"]}")
+            raise SavePack("未知的人气类型")
     def l_SUPER_CHAT_MESSAGE(s,p):
         """醒目留言"""
         if s.args.no_SUPER_CHAT_MESSAGE:

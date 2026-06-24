@@ -63,6 +63,14 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
             s.pct("观看",d["num"],"人看过;","text_large:",d["text_large"])
         else:
             s.pct("观看",d["num"],"人看过")
+    def l_POPULARITY_CHANGE(s,p):
+        """人气"""
+        d=p["data"]
+        if d["type"]==2:
+            s.pct("人气",d["popularity"],",文本:",d["popularity_text"])
+        else:
+            s.pct("支持",f"未知的人气类型 {d["type"]}")
+            raise SavePack("未知的人气类型")
     def l_SUPER_CHAT_MESSAGE(s,p):
         """醒目留言"""
         d=p["data"]
