@@ -574,7 +574,7 @@ class BiliLiveWS:
         self.p(f"[{name}]",*data)
     def close(self)->None:
         """执行低层关闭流程"""
-        self.close_hpst()
+        self.close_hpst("关闭流程")
         self.run_self_loop(self.close_ws_client)
         self.requests_session.close()
         self.asyncio_loop=None
@@ -1031,6 +1031,10 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             )
             self.close_hpst("连接关闭")
             raise WSClientError("连接关闭: "+str(e))
+        except BLWSign:
+            log.warning("信号未进行处理",exc_info=True)
+            self.error()
+            raise WSClientError("未处理的信号")
         except WSClientError:
             raise
         except TimeoutError:
@@ -1044,15 +1048,12 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         except Exception:
             log.critical("出现异常")
             self.error(f"ws_client出现错误")
-            self.close_hpst("异常")
             raise WSClientError("出现异常")
         except SystemExit:
             log.info("检测到退出异常，停止运行")
-            self.close_hpst("退出异常")
             raise
         except KeyboardInterrupt:
             log.info("中断键按下，停止运行")
-            self.close_hpst("中断键按下")
             log.debug(f"数据包计数: {self.pack_count}")
             raise
         finally:
