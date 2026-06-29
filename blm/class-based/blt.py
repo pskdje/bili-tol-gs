@@ -225,7 +225,7 @@ class DanmuTools(ToolBase):
     def send_danmu(self,msg:str,reply_mid:int,replay_dmid:str,*,return_type:str)->dict: ...
     def send_danmu(self,msg:str,reply_mid:int=0,replay_dmid:str="",*,return_type:str="extra"):
         """发送弹幕\n\nmsg: 弹幕内容\n\nreply_mid: 被回复者的uid\n\nreplay_dmid: 要回复的弹幕id"""
-        r:BiliRESTReturn["blt_T.SendLiveDanmuRes"]=self.get_rest_data("发送弹幕","https://api.live.bilibili.com/msg/send",self.add_csrf({
+        r:BiliRESTReturn["blt_T.SendLiveDanmuRes"]=self.get_rest_data("发送弹幕","https://api.live.bilibili.com/msg/send",data=self.add_csrf({
             "roomid":self.roomid,
             "msg":msg,
             "rnd":int(time.time()),
@@ -345,7 +345,7 @@ class LiveTools(ToolBase):
         })
         b=self.appsign(b,"aae92bc66f3edfab","af125a0d5279fd576c1b4418a3e8276d").signed_params
         # 处理流程
-        r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",b,headers=h)
+        r=self.get_rest_data("开始直播","https://api.live.bilibili.com/room/v1/Room/startLive",data=b,headers=h)
         d=r["data"]
         self.live_key=d["live_key"]
         rt=return_type
@@ -361,7 +361,7 @@ class LiveTools(ToolBase):
             "room_id":self.roomid,
             "platform":platform,
         })
-        r=self.get_rest_data("停止直播","https://api.live.bilibili.com/room/v1/Room/stopLive",b)
+        r=self.get_rest_data("停止直播","https://api.live.bilibili.com/room/v1/Room/stopLive",data=b)
         return r["data"]
 
 class LiveDataTools(ToolBase):
@@ -396,7 +396,7 @@ class RoomTools(ToolBase):
             b["add_tag"]=add_tag
         if del_tag is not None:
             b["del_tag"]=del_tag
-        return self.get_rest_data("更新直播间信息","https://api.live.bilibili.com/room/v1/Room/update",b)["data"]
+        return self.get_rest_data("更新直播间信息","https://api.live.bilibili.com/room/v1/Room/update",data=b)["data"]
 
     def updatePreLiveInfo(self,cover:str=None,title:str=None,*,platform:str="web")->"blt_T.UpdatePreLiveInfo":
         """预更新直播信息\n
@@ -412,7 +412,7 @@ class RoomTools(ToolBase):
             b["cover"]=cover
         if title is not None:
             b["title"]=title
-        return self.get_rest_data("预更新直播信息","https://api.live.bilibili.com/xlive/app-blink/v1/preLive/UpdatePreLiveInfo",b)["data"]
+        return self.get_rest_data("预更新直播信息","https://api.live.bilibili.com/xlive/app-blink/v1/preLive/UpdatePreLiveInfo",data=b)["data"]
 
     def getLiveAreaList(self,show_pinyin:bool=False)->"blt_T.GetLiveAreaList":
         """获取直播分区列表\n
@@ -443,7 +443,7 @@ class LiveReplay(ToolBase):
         b=self.add_csrf({
             "draft_id":draft_id,
         })
-        return self.get_rest_data("删除回放剪辑草稿","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/DeleteSliceDraft",b)
+        return self.get_rest_data("删除回放剪辑草稿","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/DeleteSliceDraft",data=b)
 
     def get_slice_stream(self,live_key:str,start_time:int,end_time:int)->dict:
         """获取切片视频流"""
@@ -468,7 +468,7 @@ class LiveReplay(ToolBase):
             "with_reserve":with_reserve,
             "av_speed":av_speed,
         })
-        return self.get_rest_data("发布直播回放片段","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorPublishVideoSlice",b)["data"]
+        return self.get_rest_data("发布直播回放片段","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorPublishVideoSlice",data=b)["data"]
 
 class LiveVote(ToolBase):
     """直播投票"""
@@ -491,7 +491,7 @@ class LiveVote(ToolBase):
         }
         if template_id:
             b["template_id"]=template_id
-        return self.get_rest_data("创建直播投票","https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/createVote",self.add_csrf(b))["data"]
+        return self.get_rest_data("创建直播投票","https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/createVote",data=self.add_csrf(b))["data"]
 
     def live_terminateVote(self,vote_id:int)->dict:
         """中断直播投票"""
@@ -499,7 +499,7 @@ class LiveVote(ToolBase):
             "interaction_id":vote_id,
             "room_id":self.roomid,
         })
-        return self.get_rest_data("中断直播投票","https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/terminateVote",b)
+        return self.get_rest_data("中断直播投票","https://api.live.bilibili.com/xlive/app-room/v1/dm/interaction/terminateVote",data=b)
 
 class BiliLiveTools(DanmuTools,SpectatorTools,LiveTools,LiveDataTools,RoomTools,LiveReplay,LiveVote):
     """全部工具"""

@@ -55,7 +55,7 @@ class LiveOpenAPI(BiliLiveExp):
     def post_openAPI_data(self,tip:str,url:str,body:dict)->dict:
         """发送数据"""
         b=json.dumps(body)
-        return self.get_rest_data(tip,url,b,headers=self.create_headers(b))["data"]
+        return self.get_rest_data(tip,url,data=b,headers=self.create_headers(b))["data"]
 
     def liveOpenStart(self,code:str):
         """请求开始游戏"""
