@@ -272,7 +272,8 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
             s.pct("小部件",f"key:{wi}","id",wic["id"],"标题:",wic["title"])
     def l_FLOW_REWARD_CARD(s,p):
         """流量奖励卡"""
-        s.pct("推广","流量奖励",f"主播: {p['anchor_name']} ,排行: {p['rank']} ,介绍: {p['description']}")
+        d=p["data"]
+        s.pct("推广","流量奖励",f"主播: {d['anchor_name']} ,排行: {d['rank']} ,介绍: {d['description']}")
     def l_SUPER_CHAT_ENTRANCE(s,p):
         """醒目留言入口变化"""
         d=p["data"]

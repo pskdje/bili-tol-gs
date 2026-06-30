@@ -628,7 +628,8 @@ class RareCmdHandle(BLMColor):
     def l_FLOW_REWARD_CARD(s,p):
         """流量奖励卡"""
         if s.args.no_FLOW_REWARD_CARD:return
-        s.pct("推广","流量奖励",f"主播: {TUSR}{p['anchor_name']}{CD} ,排行: {TNUM}{p['rank']}{CD} ,介绍: {TSTR}{p['description']}{CD} ,按钮文本: {TSTR}{p['button_text']} ,过期时间: {TNUM}{p['expire_time']}{CD}")
+        d=p["data"]
+        s.pct("推广","流量奖励",f"主播: {TUSR}{d['anchor_name']}{CD} ,排行: {TNUM}{d['rank']}{CD} ,介绍: {TSTR}{d['description']}{CD} ,按钮文本: {TSTR}{d['button_text']}{CD} ,过期时间: {TNUM}{d['expire_time']}{CD}")
     def l_SUPER_CHAT_ENTRANCE(s,p):
         """醒目留言入口变化"""
         if s.args.no_SUPER_CHAT_ENTRANCE:return
