@@ -609,7 +609,9 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 #### 方法 `BiliLiveWS.get_rest_data`
 
-获取API数据，任意发送数据参数不为None时将使用POST请求。
+获取API数据，任意发送数据参数不为 `None` 时将使用 POST 请求。
+
+除了 `tip` 和 `url` 参数，其它参数应通过关键字参数传入。
 
 若未指定 `timeout` 参数，将读取 `request_timeout` 属性作为超时时间。
 
@@ -631,7 +633,7 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 *参数* `err_code_raise` : 若为真值，响应内容的code不为0时将抛出错误，最好使用位置参数传递。
 
-**返回值:** 经过json解析后的响应内容
+**返回值:** 经过 json 解析后的响应内容
 
 **异常:** `TypeError` , `KeyboardInterrupt` , `GetDataError`
 
@@ -899,6 +901,14 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 *可能抛出异常* `WSClientError` : 表示WS客户端出现错误
 
+#### 方法 `BiliLiveWS.run_get_ws_info`
+
+运行获取信息流操作。
+
+本质是调用[get_login_nav](#方法-bililivewsget_login_nav)和[get_ws_info](#方法-bililivewsget_ws_info)获取信息，并加上异常处理。
+
+**返回值:** [get_ws_info](#方法-bililivewsget_ws_info)的返回值
+
 #### 方法 `BiliLiveWS.start`
 
 一般启动函数，只有简单的启动行为。
@@ -929,7 +939,7 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 ### 函数 `set_wslog`
 
-保存ws客户端日志。
+保存 websockets 客户端日志。
 
 ### 函数 `set_reqlog`
 
@@ -937,7 +947,7 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 ### 函数 `set_asyncio_log`
 
-保存asyncio日志。
+保存 asyncio 日志。
 
 ### 函数 `save_log`
 
@@ -947,7 +957,7 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 ### 函数 `print_HTTPClient_log`
 
-设置http.client库的调试打印，传入一个布尔值来控制是否打印响应调试(因为响应已经在其它地方有记录到日志)。
+设置 http.client 库的调试打印，传入一个布尔值来控制是否打印响应调试(因为响应已经在其它地方有记录到日志)。
 
 ### 顶层启动逻辑
 

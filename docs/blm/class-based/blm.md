@@ -277,12 +277,20 @@ python blm.py 3
 
 额外拥有添加时间的功能。
 
+#### 方法 `BiliLiveMsg.run_room_init`
+
+执行获取直播间初始化信息，并打印直播间信息。
+
+**返回值:** [get_room_init](#方法-bililiveexpget_room_init)的返回值
+
+#### 方法 `BiliLiveMsg.run_getOtherMsg`
+
+运行获取其它信息流程。
+
+本质上是根据参数调用相关接口，并进行异常捕捉。
+
+**返回值:** 是否执行流程
+
 #### 方法 `BiliLiveMsg.start`
 
-对原始的[start方法](blw.md#方法-bililivewsstart)做了扩展，在原有基础上添加了:
-
-- Cookie不存在 `buvid3` 时调用 set_buvid3_4
-- 调用 get_room_init
-- 依照参数调用 print_room_info
-- 依照参数调用 print_master_info
-- 依照参数调用 print_playurl
+对原始的[start方法](blw.md#方法-bililivewsstart)做了扩展，详见源代码。
