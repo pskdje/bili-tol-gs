@@ -556,6 +556,7 @@ class RareCmdHandle(BLMColor):
         "COMMON_NOTICE_DANMAKU":"普通通知",
         "GUARD_BUY":"舰队购买",
         "USER_TOAST_MSG":"舰队续费",
+        "FLOW_REWARD_CARD":"流量奖励卡",
         "SUPER_CHAT_ENTRANCE":"醒目留言入口变化",
         "rank-changed":"排行更新",
         "popularity-red-pocket":"红包相关",
@@ -624,6 +625,10 @@ class RareCmdHandle(BLMColor):
         """(同上)"""
         if s.args.no_USER_TOAST_MSG:return
         d=p["data"]
+    def l_FLOW_REWARD_CARD(s,p):
+        """流量奖励卡"""
+        if s.args.no_FLOW_REWARD_CARD:return
+        s.pct("推广","流量奖励",f"主播: {TUSR}{p['anchor_name']}{CD} ,排行: {TNUM}{p['rank']}{CD} ,介绍: {TSTR}{p['description']}{CD} ,按钮文本: {TSTR}{p['button_text']} ,过期时间: {TNUM}{p['expire_time']}{CD}")
     def l_SUPER_CHAT_ENTRANCE(s,p):
         """醒目留言入口变化"""
         if s.args.no_SUPER_CHAT_ENTRANCE:return
