@@ -578,7 +578,6 @@ class BiliLiveWS:
         self.run_self_loop(self.close_ws_client)
         self.requests_session.close()
         self.asyncio_loop=None
-        self.ws_client_obj=None
 
     # 事件，主要在主程序中显示提示
     def on_conn_ws_server(s)->None:
@@ -627,7 +626,9 @@ class BiliLiveWS:
     )->BiliRESTReturn:
         """获取API数据
 
-        任意发送数据参数不为None时将使用POST请求
+        任意发送数据参数不为 None 时将使用 POST 请求
+
+        除了 tip 和 url 参数，其它参数应通过关键字参数传入
 
         tip: 操作提示，用于生成错误和日志
         url: 请求的URL
@@ -639,7 +640,7 @@ class BiliLiveWS:
         timeout: 指定本次请求的超时时间
         err_code_raise: 若为真值，响应内容的code不为0时将抛出错误
 
-        返回值: 经过json解析后的响应内容
+        返回值: 经过 json 解析后的响应内容
         """
         if not isinstance(tip,str):
             raise TypeError("tip需要为str")
@@ -1058,6 +1059,17 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             raise
         finally:
             self._exit_sign=True
+    def run_get_ws_info(self)->MsgWSInfo:
+        """运行获取信息流操作"""
+        try:
+            self.get_login_nav()
+            return self.get_ws_info()
+        except GetDataError as e:
+            self.p(str(e))
+            sys.exit(1)
+        except KeyboardInterrupt:
+            self.p("获取信息流操作被用户中断")
+            sys.exit(0)
     def start(self)->NoReturn:
         """一般启动函数"""
         log.info("使用一般启动函数开始运行")
@@ -1066,15 +1078,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         self.p("获取数据…")
         if isinstance(a.cookie,CookiesAgent):
             self.cookies.update(a.cookie)
-        try:
-            self.get_login_nav()
-            info=self.get_ws_info()
-        except GetDataError as e:
-            self.p(str(e))
-            sys.exit(1)
-        except KeyboardInterrupt:
-            self.p("获取信息流操作被中断")
-            sys.exit(0)
+        info=self.run_get_ws_info()
         self.p("启动客户端…")
         try:
             self.run_blw_client(info.wss_host,info.token)
@@ -1086,9 +1090,11 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             self.print_cmd_count()
             raise
         except KeyboardInterrupt:
-            self.p("关闭")
+            self.p("用户中断")
             self.print_cmd_count()
             sys.exit(0)
+        else:
+            self.p("程序退出")
         finally:
             self.close()
 

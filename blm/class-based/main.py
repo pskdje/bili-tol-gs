@@ -36,42 +36,18 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
         except blw.GetDataError as e:
             self.p(str(e))
             sys.exit(1)
-        try:
-            ri=self.get_room_init()
-        except blw.GetDataError as e:
-            self.p(str(e))
-            sys.exit(1)
-        self.p("直播间:",ri["room_id"],""if ri["short_id"]==0 else f"({ri['short_id']})")
-        self.p("用户ID:",ri["uid"])
-        lis=ri["live_status"]
-        lsm=str(lis)
-        if lis==0:
-            lsm="未开播"
-        elif lis==1:
-            lsm="直播中"
-        elif lis==2:
-            lsm="轮播中"
-        self.p("状态:",lsm)
-        ltt=""
-        if ri["live_time"]>0:
-            ltt=time.strftime(blw.TIMEFORMAT,time.localtime(ri["live_time"]))
-        else:
-            ltt="0 (未开播)"
-        self.p("开播时间:",ltt)
-        del lis,lsm,ltt,ri
-        if a.no_show_room_info:
-            self.print_room_info()
-        if a.no_show_master_info:
-            self.print_master_info()
-        if a.get_room_playurl:
-            self.print_playurl()
+        except KeyboardInterrupt:
+            self.p("处理鉴权信息流程被用户中断")
+            sys.exit(0)
+        self.run_room_init()
+        self.run_getOtherMsg()
         try:
             info=self.get_ws_info()
         except blw.GetDataError as e:
             self.p(str(e))
             sys.exit(1)
         except KeyboardInterrupt:
-            self.p("获取信息流操作被中断")
+            self.p("获取信息流操作被用户中断")
             sys.exit(0)
         self.p("启动客户端…")
         try:
@@ -79,10 +55,16 @@ class S(blm.BiliLiveMsg,blm.BiliLiveSaveExp):
         except blw.WSClientError as e:
             self.p(str(e))
             sys.exit(1)
+        except SystemExit:
+            self.p("cmd处理退出")
+            self.print_cmd_count()
+            raise
         except KeyboardInterrupt:
-            self.p("关闭")
+            self.p("用户中断")
             self.print_cmd_count()
             sys.exit(0)
+        else:
+            self.p("程序退出")
         finally:
             self.close()
 

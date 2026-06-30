@@ -261,7 +261,7 @@ class BiliLiveSaveExp(BiliLiveExp):
     def p(self,*t:Any)->None:
         """输出文本"""
         print(*t)
-        if self.args.save_to_file:
+        if self.args and self.args.save_to_file:
             print(*t,file=self.args.save_to_file)
 
     def close(self)->None:
@@ -271,7 +271,7 @@ class BiliLiveSaveExp(BiliLiveExp):
             self.args.save_to_file.close()
 
 class BiliLiveMsg(BiliLiveExp):
-    """启用"""
+    """主启动逻辑"""
 
     add_args=[
         {"name":"no-show-room-info","help":"不显示房间信息","action":"store_false"},
@@ -300,22 +300,16 @@ class BiliLiveMsg(BiliLiveExp):
                 self.p(t,f"[{name}]",*data)
                 return
         self.p(f"[{name}]",*data)
-    def start(self)->None:
-        """带信息启动"""
-        log.info("使用信息启动函数开始运行")
-        log.debug(f"版本信息: {blw.VERSIONINFO}")
-        a=self.pararg()
-        self.p("获取数据…")
-        if isinstance(a.cookie,CookiesAgent):
-            for ck,cv in a.cookie.items():
-                self.cookies.set(ck,cv,domain=".bilibili.com")
-        if "buvid3" not in self.cookies:
-            self.set_buvid3_4()
+    def run_room_init(self)->"blm_T.RoomInit":
+        """执行获取直播间初始化信息，并打印直播间信息"""
         try:
             ri=self.get_room_init()
         except GetDataError as e:
             self.p(str(e))
             sys.exit(1)
+        except KeyboardInterrupt:
+            self.p("获取直播间初始化信息流程被用户中断")
+            sys.exit(0)
         self.p("直播间:",ri["room_id"],""if ri["short_id"]==0 else f"({ri['short_id']})")
         self.p("用户ID:",ri["uid"])
         lis=ri["live_status"]
@@ -333,31 +327,53 @@ class BiliLiveMsg(BiliLiveExp):
         else:
             ltt="0 (未开播)"
         self.p("开播时间:",ltt)
-        del lis,lsm,ltt,ri
-        if a.no_show_room_info:
-            self.print_room_info()
-        if a.no_show_master_info:
-            self.print_master_info()
-        if a.get_room_playurl:
-            self.print_playurl()
+        return ri
+    def run_getOtherMsg(self)->bool:
+        """运行获取其它信息流程"""
+        if self.args is None:return False
         try:
-            self.get_login_nav()
-            info=self.get_ws_info()
+            if self.args.no_show_room_info:
+                self.print_room_info()
+            if self.args.no_show_master_info:
+                self.print_master_info()
+            if self.args.get_room_playurl:
+                self.print_playurl()
         except GetDataError as e:
             self.p(str(e))
             sys.exit(1)
         except KeyboardInterrupt:
-            self.p("获取信息流操作被中断")
+            self.p("获取其它信息流程被用户中断")
             sys.exit(0)
+        return True
+    def start(self)->None:
+        """带信息启动"""
+        log.info("使用信息启动函数开始运行")
+        log.debug(f"版本信息: {blw.VERSIONINFO}")
+        a=self.pararg()
+        self.p("获取数据…")
+        if isinstance(a.cookie,CookiesAgent):
+            for ck,cv in a.cookie.items():
+                self.cookies.set(ck,cv,domain=".bilibili.com")
+        if "buvid3" not in self.cookies:
+            self.set_buvid3_4()
+        self.run_room_init()
+        self.run_getOtherMsg()
+        info=self.run_get_ws_info()
         self.p("启动客户端…")
         try:
-            self.run_blw_client(info["wss_host"],info["token"])
+            self.run_blw_client(info.wss_host,info.token)
         except WSClientError as e:
             self.p(str(e))
             sys.exit(1)
+        except SystemExit:
+            self.p("cmd处理退出")
+            self.print_cmd_count()
+            raise
         except KeyboardInterrupt:
-            self.p("关闭")
+            self.p("用户中断")
             self.print_cmd_count()
             sys.exit(0)
+        else:
+            self.p("程序退出")
         finally:
             self.close()
