@@ -123,6 +123,8 @@ python blm.py 3
 
 `format` 方法必须返回字符串，否则内容将会被丢弃。
 
+若输入的文本进入行缓冲，将返回输入字符串长度的相反数；若行缓冲的内容写入文件；则返回文件对象 `write` 方法的返回值；若要写入数据不是字符串类型，就返回 `0` 。
+
 ### 类 `BiliLiveExp`
 
 直播信息流一般基本扩展。
@@ -260,6 +262,24 @@ python blm.py 3
 #### 方法 `BiliLiveSaveExp.close`
 
 调用基类的关闭方法，然后调用save_to_file的关闭方法。
+
+### 类 `BiliLiveNotRequiredArgs`
+
+构建没有必填参数的参数解析。
+
+将 [build_argparser](blw.md#方法-bililivewsbuild_argparser) 改为没有必须参数。
+
+**继承:** `BiliLiveExp`
+
+#### 常量 `BiliLiveNotRequiredArgs.DEFAULT_ROOM_ID`
+
+默认使用的直播间id。
+
+用作 `roomid` 参数的默认值。
+
+#### 方法 `BiliLiveNotRequiredArgs.build_argparser`
+
+重写了构造命令行参数解析，现在没有必须参数。
 
 ### 类 `BiliLiveMsg`
 

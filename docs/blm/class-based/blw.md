@@ -81,27 +81,33 @@ class cmd处理示例(blw.BiliLiveWS):# 继承基本组件
 
 ### 常量 `UA`
 
-默认的用户代理字符串。
+模块默认的用户代理字符串。
 
 ### 常量 `VERSIONINFO`
 
-记录Python和依赖的版本信息。
+记录 Python 和依赖的版本信息。
 
 ### 常量 `LOGDIRPATH`
 
-日志目录。
+日志目录的路径。
 
 ### 常量 `ENCODING`
 
-指定大部分运行文件保存编码。
+指定大部分运行文件默认保存编码。
 
 ### 常量 `starttime`
 
 启动时间，不要修改。
 
-### 变量 `log`
+在模块开始执行时进行赋值。
 
-日志记录。
+### 常量 `log`
+
+blm 日志记录器。
+
+### 常量 `wslog`
+
+websockets 客户端日志记录器。
 
 ### 变量 `cumulative_error_count`
 
@@ -255,7 +261,7 @@ cmd处理请求退出程序。
 
 分割键值对的cookie信息。
 
-输入格式类似为 “key1=value1;key=value2” 的cookie文本，常见于 WebAPI document.cookie 和 Cookie 请求头。
+输入格式类似为 `key1=value1;key=value2` 的cookie文本，常见于 WebAPI `document.cookie` 和 `Cookie` 请求头。
 
 若输入的数据格式错误可能会导致出现赋值异常。
 
@@ -399,6 +405,8 @@ Wbi签名结果存储。
 
 直播信息流的地址信息容纳。
 
+可用属性与 [`__init__`](#方法-msgwsinfo__init__) 方法的参数相同。
+
 #### 方法 `MsgWSInfo.__init__`
 
 初始化信息流的地址信息容纳。
@@ -501,9 +509,13 @@ WebSocket 客户端对象。
 
 cmd计数容纳，由__init__初始化为 `[]` 。
 
-#### 属性 `BiliLiveWS._exit_sign`
+#### 属性 `BiliLiveWS._closed`
 
-退出信号，由__init__初始化为 `False` 。
+表示当前实例是否关闭，由__init__初始化为 `False` 。
+
+#### 属性 `BiliLiveWS._has_run_asyncio`
+
+是否正在运行 asyncio 循环，由__init__初始化为 `False` 。
 
 #### 属性 `BiliLiveWS.requests_session`
 
@@ -532,6 +544,10 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 获取会话的cookie对象。
 
 只读，返回 `requests_session` 属性的 `cookies` 。
+
+#### 属性 `BiliLiveWS.closed`
+
+只读，返回当前实例是否已关闭。
 
 #### 方法 `BiliLiveWS.__init__`
 
@@ -663,13 +679,13 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 #### 方法 `BiliLiveWS.from_list_add_args`
 
-不要使用该函数，请调用[blw对应名称的函数](#函数-from_list_add_args)。暂无弃用计划。
+**已弃用**，请调用[blw对应名称的函数](#函数-from_list_add_args)。
 
 #### 方法 `BiliLiveWS.get_Cookie`
 
 获取Cookie数据。
 
-若存在名为 `read_cookie` 的属性，将委托该方法来处理cookie数据，当处于调试模式时将记录会被argparse模块处理的内置异常。
+若存在名为 `read_cookie` 的属性，将委托该方法来处理cookie数据，当处于调试模式时将记录会被 argparse 模块处理的内置异常。
 
 自身内置了一些简单的cookie处理逻辑。
 
@@ -677,7 +693,7 @@ wbi 的 subKey ，由[get_login_nav](#方法-bililivewsget_login_nav)设置。
 
 *参数* `s` : 一个cookie字符串或指向cookie文件的字符串
 
-**返回值:** 一个 `CookiesAgent` 代理对象或 `None` 。
+**返回值:** 一个 `CookiesAgent` 代理对象、 `None` 或 read_cookie 的返回值。
 
 *可能抛出异常* `ValueError` : 表示内容解析失败
 
@@ -891,7 +907,7 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 将大部分异常封装为 `WSClientError` 并抛出，同时记录原始错误信息。
 
-退出时将设置 [`_exit_sign`](#属性-bililivews_exit_sign) 属性为 `True` 。
+还将设置 [`_has_run_asyncio`](#属性-bililivews_has_run_asyncio) 标志。
 
 *参数* `host` : 直播信息流的域名和端口
 
@@ -915,6 +931,14 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 查看源代码以了解如何启动。
 
+*可能抛出异常* `RuntimeError` : 当前实例已关闭
+
+### 函数 `set_logpath`
+
+检查由 `LOGDIRPATH` 常量所指示的日志路径，若不存在将自动创建。
+
+**返回值:** `False` 日志目录已存在； `True` 日志目录已新建
+
 ### 函数 `create_log_handle`
 
 创建日志保存处理。
@@ -926,12 +950,6 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 *参数* `path` : 日志保存路径
 
 **返回值:** logging.handlers.RotatingFileHandler 的实例
-
-### 函数 `set_logpath`
-
-检查由 `LOGDIRPATH` 常量所指示的日志路径，若不存在将自动创建。
-
-**返回值:** `False` 日志目录已存在； `True` 日志目录已新建
 
 ### 函数 `set_log`
 
