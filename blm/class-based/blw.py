@@ -4,7 +4,7 @@
 可选的第三方库: brotli
 数据包格式参考自: [已失效](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/live/message_stream.md) 和 直播开放平台
 本文件只实现基本功能
-本文件自带一个异常保存功能，出现异常时调用error函数即可。
+本文件自带一个异常保存功能，出现异常时调用 `error` 函数即可。
 但要注意：它能记录的信息是有限的，并要尽快记录一些信息。因此，你可能需要自行处理一些信息。
 """
 
@@ -19,8 +19,8 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Any,NoReturn
 import collections.abc as c_abc
-try:# 兼容3.14之后
-    from compression import zlib # type: ignore
+try:
+    from compression import zlib
 except ModuleNotFoundError:
     import zlib
 try:
@@ -57,6 +57,7 @@ __all__:list[str]=[
     "save_log",
     # 异常
     "BLWException",
+    "DataError",
     "GetDataError",
     "WSClientError",
     "BLWSign",
@@ -70,21 +71,32 @@ __all__:list[str]=[
     "MsgWSInfo",
     "BiliLiveWS",
 ]
-__version__:str="3"
+__version__:str="4"
 DEBUG:bool=False
-TIMEFORMAT:str="%Y/%m/%d-%H:%M:%S"
+"""调试模式标记"""
+TIMEFORMAT:str=r"%Y/%m/%d-%H:%M:%S"
+"""默认时间格式化方法"""
 UA:str="Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0"
+"""模块用户代理常量"""
 VERSIONINFO:str=f"""Python/{sys.version.split()[0]}({sys.platform}) blw/{__version__} requests/{requests.__version__} websockets/{websockets.__version__}{" brotli/"+brotli.version if brotli else""}"""
+"""版本信息"""
 LOGDIRPATH=Path("bili_live_ws_log")
+"""日志目录的路径"""
 ENCODING:str="utf_8"
+"""默认文件编码格式"""
 starttime:float=time.time()
+"""开始时间(指本模块初始化时间)"""
 log=logging.getLogger("bili_live_ms")
+"""blm 日志记录器"""
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 wslog=logging.getLogger("websockets.client")
+"""websockets 客户端日志记录器"""
 wslog.setLevel(logging.DEBUG)
 is_save_log:bool=False
+"""标记是否已开始保存日志"""
 cumulative_error_count:int=0
+"""累计错误数量"""
 wbi_mixinKeyEncTab=[
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
     33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
@@ -110,8 +122,9 @@ def error(v:dict[str,Any]=None,d:Any=None)->None:
     dp=Path("bili_live_ws_err")
     fp=dp/f"{time.time_ns()}.txt"
     def nsf():# 未成功保存异常时调用
-        log.exception(f"未成功保存错误文件，文件路径: {fp.resolve()}",stacklevel=2)
-        print("原定保存错误信息的路径:",str(fp.resolve()))
+        fpsr=str(fp.resolve())
+        log.exception(f"未成功保存错误文件，文件路径: {fpsr}",stacklevel=2)
+        print("原定保存错误信息的路径:",fpsr)
         print("=====错误堆栈=====")
         traceback.print_exc()
         print("="*18)
@@ -223,7 +236,7 @@ def bst(b:bytes,sep:str=" ")->str:
     return t
 
 def res_log(res:requests.Response,stacklevel:int=2)->None:
-    """记录响应数据日志
+    """记录响应数据日志\n
     res: requests库的响应对象或类似格式的对象
     stacklevel: 日志内要跳过的堆栈数，不可少于2
     """
@@ -258,12 +271,12 @@ class BLWSign(BLWException):
 
 class SavePack(BLWSign):
     """保存数据包"""
-
 class ExitBLW(BLWSign):
     """cmd处理请求退出程序"""
 
 def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[AddArgsDict]|tuple[AddArgsDict,...])->list[str]:
     """从列表添加命令行选项
+
     argobj: 参数解析对象
     arg_list: 一个或多个参数解析方法的列表
     返回值: 一个添加成功参数名称的列表
@@ -302,8 +315,11 @@ def from_list_add_args(argobj:argparse.ArgumentParser,arg_list:list[AddArgsDict]
 
 def split_kv_cookie(data:str)->dict[str,str]:
     """分割键值对的cookie信息
-    格式类似为 “key1=value1;key=value2” 的cookie文本
-    常见于 WebAPI document.cookie 和 Cookie 请求头
+
+    格式类似为 `key1=value1;key=value2` 的cookie文本
+
+    常见于 WebAPI `document.cookie` 和 Cookie 请求头
+
     若输入的数据格式错误可能会导致出现赋值异常
     """
     d={}
@@ -314,6 +330,7 @@ def split_kv_cookie(data:str)->dict[str,str]:
 
 def bilipack(op:int,data:str,seq:int=0)->bytes:
     """返回要发送的数据包
+
     op: 操作码
     data: 数据包内容
     seq: 每次递增
@@ -355,7 +372,6 @@ class WbiSign:
     sign:str
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.sign}>"
-
 def wbi_getMixinKey(orig:str)->str:
     """对 imgKey + subKey 的字符串顺序打乱编码，详见下面wbi_encode函数的说明"""
     from functools import reduce
@@ -385,21 +401,25 @@ def wbi_encode(params:dict[str,Any],imgKey:str,subKey:str)->WbiSign:
 
 class LiveMsgProto(typing.NamedTuple):
     """信息流数据包映射"""
-    length:int # 数据包总长度
-    headerLength:int # 头部长度
-    ver:int # 协议版本
-    op:int # 操作码
-    seq:int # 每次递增
-    body:bytes # 正文
+    length:int
+    """数据包总长度"""
+    headerLength:int
+    """头部长度"""
+    ver:int
+    """协议版本"""
+    op:int
+    """操作码"""
+    seq:int
+    """每次递增"""
+    body:bytes
+    """正文"""
     def __len__(self):
         return len(self.body)
     @classmethod
     def unpack(cls,pk:bytes)->typing.Self:
         """解析服务器下发的数据包"""
-        if not isinstance(pk,bytes):
-            raise TypeError("需要字节串类型数据包")
-        if len(pk)<16:
-            raise ValueError("数据包长度不足")
+        if not isinstance(pk,bytes):raise TypeError("需要字节串类型数据包")
+        if len(pk)<16:raise ValueError("数据包长度不足")
         ui=lambda i:struct.unpack(">i",i)[0]
         uh=lambda i:struct.unpack(">h",i)[0]
         return cls(ui(pk[0:4]),uh(pk[4:6]),uh(pk[6:8]),ui(pk[8:12]),ui(pk[12:16]),pk[16:])
@@ -428,8 +448,7 @@ class CookiesAgent:
         """初始化Cookie信息代理"""
         if isinstance(cookies,dict):
             self.cookies=cookies
-        else:
-            raise TypeError("数据不是字典")
+        else:raise TypeError("数据不是字典")
 
     def __repr__(self):
         """给出不清晰的Cookie信息"""
@@ -454,20 +473,21 @@ class CookiesAgent:
 
 class MsgWSInfo:
     """直播信息流的地址信息容纳"""
-
     def __init__(self,token:str,wss_host:str=None,
         *,data:dict=None,other:Any=None
     ):
         """初始化信息流的地址信息容纳"""
-        self.data=data # 原始响应(可选)
-        self.other=other # 其它信息(可选)
+        self.data=data
+        """原始响应(可选)"""
+        self.other=other
+        """其它信息(可选)"""
         self.token=token
+        """直播信息流认证信息"""
         self.wss_host=wss_host
-
+        """wss 协议直播信息流地址"""
     def __repr__(self)->str:
         """返回token信息"""
         return f"<{self.__class__.__name__} token: '{self.token}'>"
-
     def __getitem__(self,key:str)->Any:
         """获取实例的属性，用于向下兼容"""
         if hasattr(self,key):
@@ -482,7 +502,6 @@ class MsgWSInfo:
 
 class BiliLiveWS:
     """哔哩哔哩直播信息流主程序框架"""
-
     UA:str=UA
     """类用户代理常量"""
     sequence:int=0
@@ -512,8 +531,10 @@ class BiliLiveWS:
     only_count_cmd:list[str]=[]
     """只计数cmd的列表"""
 
-    #wbi_imgKey
-    #wbi_subKey
+    wbi_imgKey:str
+    """wbi 签名的 imgKey"""
+    wbi_subKey:str
+    """wbi 签名的 subKey"""
 
     @property
     def debug(self)->bool:
@@ -522,14 +543,15 @@ class BiliLiveWS:
 
     def __init__(self):
         """初始化blw的一些必要变量"""
-
         self.save_cmd:list[str]=[]
         """要被保存的cmd列表"""
         self.count_cmd:list[str]=[]
         """要被计数的cmd列表"""
         self.pack_count:dict[str,int]={}
         """cmd计数容纳"""
-        self._exit_sign:bool=False
+        self._closed:bool=False
+        """是否关闭"""
+        self._has_run_asyncio:bool=False
         """退出信号"""
         rsess=requests.Session()
         self.requests_session=rsess
@@ -542,7 +564,7 @@ class BiliLiveWS:
         self.ws_client_obj=None
     def __repr__(self)->str:
         """对象概述"""
-        return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}{'; Exit'if self._exit_sign else''}>"
+        return f"<{self.__class__.__module__}.{self.__class__.__name__}: roomid={self.roomid}, uid={self.uid}, args is {bool(self.args)}{'; Closed'if self._closed else''}>"
 
     @property
     def headers(self):
@@ -552,6 +574,10 @@ class BiliLiveWS:
     def cookies(self):
         """获取会话的cookie对象"""
         return self.requests_session.cookies
+    @property
+    def closed(self)->bool:
+        """获取当前实例是否已关闭"""
+        return self._closed
 
     def error(self,d:Any=None,**v:Any)->None:
         """记录异常，附带该类的部分变量，可通过剩余关键字参数扩展列表"""
@@ -574,6 +600,7 @@ class BiliLiveWS:
         self.p(f"[{name}]",*data)
     def close(self)->None:
         """执行低层关闭流程"""
+        self._closed=True
         self.close_hpst("关闭流程")
         self.run_self_loop(self.close_ws_client)
         self.requests_session.close()
@@ -607,7 +634,7 @@ class BiliLiveWS:
         """运行到自身事件循环"""
         if self.asyncio_loop is None:return
         if not self.asyncio_loop.is_running():return
-        if self._exit_sign:return
+        if not self._has_run_asyncio:return
         try:
             rl=asyncio.get_running_loop()
         except RuntimeError:
@@ -642,8 +669,7 @@ class BiliLiveWS:
 
         返回值: 经过 json 解析后的响应内容
         """
-        if not isinstance(tip,str):
-            raise TypeError("tip需要为str")
+        if not isinstance(tip,str):raise TypeError("参数 tip 的类型必须为 str")
         rn=tip
         rsess=self.requests_session
         rqh=headers
@@ -684,7 +710,8 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             raise GetDataError(f"{rn}失败",type="request")
         res_log(r,3)
         if r.status_code!=200:
-            raise GetDataError(f"{rn}响应的状态码为{r.status_code}",type="response",status_code=r.status_code)
+            log.error(f"{rn}的响应状态码不为 0")
+            raise GetDataError(f"{rn}响应的状态码为 {r.status_code}",type="response",status_code=r.status_code)
         try:
             d=r.json()
         except:
@@ -708,12 +735,8 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         return wbi_encode(params,self.wbi_imgKey,self.wbi_subKey)
 
     def from_list_add_args(self,argobj:argparse.ArgumentParser,arg_list:list[dict]|tuple[dict,...])->list[str]:
-        """从列表添加命令行选项
-        argobj: 参数解析对象
-        arg_list: 一个或多个参数解析方法的列表
-        返回值: 一个添加成功参数名称的列表
-        """
-        warnings.warn("不建议通过调用类的from_list_add_args方法，请改为调用blw对应名称的函数",category=PendingDeprecationWarning)
+        """从列表添加命令行选项\n\n**已弃用**，将在后续删除。"""
+        warnings.warn("不要调用类的from_list_add_args方法，请改为调用blw对应名称的函数",category=DeprecationWarning)
         return from_list_add_args(argobj,arg_list)
 
     def get_Cookie(self,s:str)->CookiesAgent|Any|None:
@@ -722,7 +745,10 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             try:
                 return self.read_cookie(s)# 只有返回 CookiesAgent 类才会被默认启动逻辑所接受
             except(TypeError,ValueError):
-                if DEBUG: self.error("read_cookie 抛出会被argparse模块处理的内置异常")
+                if DEBUG: self.error("read_cookie 抛出会被 argparse 模块处理的内置异常")
+                raise
+            except:
+                self.error("read_cookie 抛出异常")
                 raise
         p=Path(s)
         c={}
@@ -750,6 +776,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         epil:str=""
     )->ArgsParser:
         """构造命令行参数解析
+
         desc: 放在前面的描述
         epil: 放在后面的说明
         """
@@ -795,8 +822,8 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
 
     def get_uid(self)->int:
         """获取登录会话对应的uid
-        需要提前于self.cookies字典内填入SESSDATA属性。
-        若需要登录信息流则必须调用此接口获取uid，或者自行提供uid填入self.uid变量。
+        需要提前于 `self.cookies` 字典内填入 SESSDATA 属性。
+        若需要登录信息流则必须调用此接口获取 uid ，或者自行提供 uid 填入 `self.uid` 变量。
         """
         r=self.get_rest_data("获取uid","https://api.bilibili.com/x/member/web/account")
         u=r["data"]["mid"]
@@ -810,10 +837,8 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         w=d["wbi_img"]
         img_url:str=w["img_url"]
         sub_url:str=w["sub_url"]
-        self.wbi_imgKey:str=img_url.rsplit("/",1)[1].split(".")[0]
-        """wbi 签名的 imgKey"""
-        self.wbi_subKey:str=sub_url.rsplit("/",1)[1].split(".")[0]
-        """wbi 签名的 subKey"""
+        self.wbi_imgKey=img_url.rsplit("/",1)[1].split(".")[0]
+        self.wbi_subKey=sub_url.rsplit("/",1)[1].split(".")[0]
         if d["isLogin"]==True:
             self.uid=d["mid"]
         return r
@@ -864,8 +889,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             self.error()
     def compute_popularity(self,data:bytes)->int:
         """从心跳包回复计算人气值"""
-        if not isinstance(data,bytes):
-            raise TypeError("变量'data'需要bytes类型")
+        if not isinstance(data,bytes):raise TypeError("变量 'data' 需要 bytes 类型")
         return int.from_bytes(data,"big")
     def print_popularity(self,data:bytes)->int:
         """打印人气值"""
@@ -902,8 +926,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             self.pack_count[cmd]+=1
     def print_cmd_count(self)->dict[str,int]:
         """打印数据包计数"""
-        if not self.args.print_pack_count:
-            return
+        if not self.args.print_pack_count:return
         self.p("数据包cmd计数结果:")
         if len(self.pack_count)==0:
             self.p("无内容")
@@ -959,8 +982,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
                 if this_error_count>2:
                     ie=True
                     self.p("单个处理列表错误次数过多，强制进行关闭")
-                if ie:
-                    raise WSClientError("处理数据包时出现异常")
+                if ie:raise WSClientError("处理数据包时出现异常")
     async def ws_client(self,url:str,token:str)->NoReturn:
         """信息流ws客户端"""
         log.info(f"连接服务器: {url} ,token: {token}")
@@ -1007,13 +1029,11 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
                 else:
                     upv="未知的协议版本"
                     log.warning(f"{upv} {p[2]}")
-                    if self.args.no_print_enable:
-                        continue
+                    if self.args.no_print_enable:continue
                     self.pct("支持",upv,p[2])
     def close_hpst(self,msg:str=None)->None:
         """关闭hpst"""
-        if not self.hpst:
-            return
+        if not self.hpst:return
         self.hpst.cancel(msg)
         self.hpst=None
     async def close_ws_client(self):
@@ -1023,6 +1043,9 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         self.ws_client_obj=None
     def run_blw_client(self,host:str,token:str)->None:
         """运行ws客户端"""
+        if self._closed:
+            warnings.warn("当前客户端实例已关闭，尝试运行已关闭的实例可能会出现错误。",ResourceWarning,stacklevel=2)
+        self._has_run_asyncio=True
         try:
             asyncio.run(self.ws_client(f"wss://{host}/sub",token),debug=True if DEBUG else None)
         except websockets.ConnectionClosedError as e:
@@ -1058,7 +1081,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             log.debug(f"数据包计数: {self.pack_count}")
             raise
         finally:
-            self._exit_sign=True
+            self._has_run_asyncio=False
     def run_get_ws_info(self)->MsgWSInfo:
         """运行获取信息流操作"""
         try:
@@ -1072,6 +1095,7 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             sys.exit(0)
     def start(self)->NoReturn:
         """一般启动函数"""
+        if self._closed:raise RuntimeError("当前实例已关闭，无法启动。")
         log.info("使用一般启动函数开始运行")
         log.debug(f"版本信息: {VERSIONINFO}")
         a=self.pararg()
@@ -1098,43 +1122,39 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
         finally:
             self.close()
 
-def create_log_handle(path:str)->logging.handlers.RotatingFileHandler:
-    """创建日志保存处理"""
-    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/path,maxBytes=2097152,backupCount=3,encoding=ENCODING)
-    h.setLevel(logging.DEBUG)
-    return h
 def set_logpath()->bool:
     """检查日志路径，若不存在将自动创建"""
     p=LOGDIRPATH
-    if p.is_dir():
-        return False
+    if p.is_dir():return False
     log.info("新建保存日志用目录")
     p.mkdir()
     return True
+def create_log_handle(path:str)->logging.handlers.RotatingFileHandler:
+    """创建日志保存处理"""
+    set_logpath()
+    h=logging.handlers.RotatingFileHandler(LOGDIRPATH/path,maxBytes=2097152,backupCount=3,encoding=ENCODING)
+    h.setLevel(logging.DEBUG)
+    return h
 def set_log()->None:
     """保存运行日志"""
-    set_logpath()
     h=create_log_handle("ms.log")
     h.setFormatter(logging.Formatter("{asctime} [{levelname}] '{filename}' {funcName}: {message}",style="{"))
     log.addHandler(h)
 def set_wslog()->None:
     """保存ws客户端日志"""
-    set_logpath()
     if wslog.hasHandlers():return
     h=create_log_handle("ws.log")
     h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
     wslog.addHandler(h)
 def set_reqlog()->None:
     """保存请求日志"""
-    set_logpath()
     l=logging.getLogger("urllib3")
     l.setLevel(logging.DEBUG)
     h=create_log_handle("urllib3.log")
     h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
     l.addHandler(h)
 def set_asyncio_log()->None:
-    """保存asyncio日志"""
-    set_logpath()
+    """保存 asyncio 日志"""
     l=logging.getLogger("asyncio")
     l.setLevel(logging.DEBUG)
     h=create_log_handle("asyncio.log")
@@ -1143,8 +1163,7 @@ def set_asyncio_log()->None:
 def save_log()->None:
     """配置保存日志"""
     global is_save_log
-    if is_save_log:
-        raise RuntimeError("不可重复配置保存日志")
+    if is_save_log:raise RuntimeError("不可重复配置保存日志")
     set_log()
     set_wslog()
     set_reqlog()
@@ -1152,7 +1171,7 @@ def save_log()->None:
     is_save_log=True
 
 def print_HTTPClient_log(set_response:bool=False)->None:
-    """设置http.client库的调试打印，传入一个布尔值来控制是否打印响应调试(因为响应已经在其它地方有记录到日志)"""
+    """设置 http.client 库的调试打印，传入一个布尔值来控制是否打印响应调试(因为响应已经在其它地方有记录到日志)"""
     from http.client import HTTPConnection,HTTPResponse
     HTTPConnection.debuglevel=1
     if set_response:

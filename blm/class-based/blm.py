@@ -3,7 +3,7 @@
 
 import blw
 import sys,time,re,argparse,typing
-from blw import GetDataError,WSClientError,CookiesAgent,log
+from blw import GetDataError,WSClientError,CookiesAgent,ArgsParser,log
 from collections.abc import Generator
 from typing import Any,Self
 
@@ -14,6 +14,7 @@ __all__=[
     "BiliLiveExp",
     "BiliLiveBlackWordExp",
     "BiliLiveSaveExp",
+    "BiliLiveNotRequiredArgs",
     "BiliLiveMsg",
 ]
 
@@ -21,13 +22,15 @@ if typing.TYPE_CHECKING:
     import bili_types.blm as blm_T
 
 def add_no_cmd_args[C:list[blw.AddArgsDict]](cmd_args:C,cmd_name_list:dict[str,str])->C:
-    """为cmd_args附加cmd参数
+    """为 cmd_args 附加cmd参数
+
     cmd_args: 被附加参数选项字典的对象
     cmd_name_list: 一个cmd名称为键，帮助内容为值所组成的字典
+
     返回值: cmd_args参数输入的列表
     """
     if not isinstance(cmd_name_list,dict):
-        raise TypeError("cmd_name_list需要一个键值对的字典")
+        raise TypeError("cmd_name_list 需要一个键值对的字典")
     for name in cmd_name_list:
         cmd_args.append({
             "name":"--no-"+str(name),
@@ -37,7 +40,7 @@ def add_no_cmd_args[C:list[blw.AddArgsDict]](cmd_args:C,cmd_name_list:dict[str,s
     return cmd_args
 
 def read_text_continue_h(path:str)->Generator[str,None,str]:
-    """读取文件，并在读取过程中忽略#开头的文本"""
+    """读取文件，并在读取过程中忽略 `#` 开头的文本"""
     i=0
     with open(path,"rt")as f:
         for l in f:
@@ -85,10 +88,10 @@ class SaveToFile:
         """处理字符串，默认直接返回"""
         return data
     def write(self,data:str)->int:
-        """写入文件，调用format处理字符串"""
+        """写入文件，调用 `format` 处理字符串"""
         self.temp+=data
         if (not self.temp.endswith(("\r","\n")))and len(self.temp)<8192:
-            return len(data)
+            return -len(data)
         d=self.format(self.temp)
         self.temp=""
         if isinstance(d,str):
@@ -114,12 +117,12 @@ class BiliLiveExp(blw.BiliLiveWS):
 
     def other_arg_add(self,argp:argparse.ArgumentParser)->None:
         """添加其它命令行参数
-        从self.add_args读取数据来添加
+
+        从 `self.add_args` 读取数据来添加
         """
         top_args=[]
         for i in self.add_args:
-            if not isinstance(i,dict):
-                continue
+            if not isinstance(i,dict):continue
             if i.get("type")=="group" and len(i["list"])>0:
                 tg=argp.add_argument_group(
                     title=i.get("title"),
@@ -270,6 +273,43 @@ class BiliLiveSaveExp(BiliLiveExp):
         if self.save_to_file:
             self.args.save_to_file.close()
 
+class BiliLiveNotRequiredArgs(BiliLiveExp):
+    """构建没有必填参数的参数解析"""
+
+    DEFAULT_ROOM_ID:int=0
+    """默认使用的直播间id"""
+
+    def build_argparser(self,
+        desc:str="哔哩哔哩直播信息流处理\n允许使用@来引入参数文件",
+        epil:str=""
+    )->ArgsParser:
+        """构造命令行参数解析
+
+        desc: 放在前面的描述
+        epil: 放在后面的说明
+        """
+        log.debug(f"构造命令行参数解析，参数信息：\ndesc = `{desc}`\nepil = `{epil}`")
+        parser=ArgsParser(
+            usage="%(prog)s [options] roomid",
+            description=desc,
+            epilog=epil,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            fromfile_prefix_chars="@"
+        )
+        parser.add_argument("-r","--roomid",help="直播间ID",type=int,default=self.DEFAULT_ROOM_ID)
+        parser.add_argument("-d","--debug",help="开启调试模式",action="store_true")
+        parser.add_argument("--cookie",help="使用Cookie登录",type=self.get_Cookie,metavar="Cookie|FILE")
+        parser.add_argument("--no-print-enable",help="不打印不支持的信息",action="store_true")
+        parser.add_argument("--pack-error-no-exit",help="数据包处理异常时不退出",action="store_false")
+        dbg=parser.add_argument_group("调试功能")
+        dbg.add_argument("-u","--save-unknow-datapack",help="保存未知的数据包",action="store_true")
+        dbg.add_argument("-C","--print-pack-count",help="打印数据包计数",action="store_true")
+        dbg.add_argument("-c","--count-cmd",help="对某个cmd进行计数",action="append",metavar="CMD",default=[])
+        dbg.add_argument("-s","--save-cmd",help="保存某个cmd数据包",action="append",metavar="CMD",default=[])
+        cmd=parser.add_argument_group("关闭某个cmd的显示")
+        blw.from_list_add_args(cmd,self.cmd_args)
+        return parser
+
 class BiliLiveMsg(BiliLiveExp):
     """主启动逻辑"""
 
@@ -282,6 +322,7 @@ class BiliLiveMsg(BiliLiveExp):
 
     def pct(self,name:str,*data:Any)->None:
         """统一按照一定样式输出cmd处理后文本
+
         额外拥有添加时间的功能
         """
         if not isinstance(name,str):
