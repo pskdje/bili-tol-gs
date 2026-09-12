@@ -905,7 +905,7 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 
 该方法将使用 `asyncio.run` 启动[`ws_client`](#异步方法-bililivewsws_client)。
 
-将大部分异常封装为 `WSClientError` 并抛出，同时记录原始错误信息。
+将大部分异常封装为 `WSClientError` 并抛出，同时记录原始错误信息。部分网络原因导致的异常需要启用调试才会记录。
 
 还将设置 [`_has_run_asyncio`](#属性-bililivews_has_run_asyncio) 标志。
 
@@ -950,6 +950,12 @@ cmd处理函数应按照 `"l_" + cmd` 来命名，区分大小写。若存在特
 *参数* `path` : 日志保存路径
 
 **返回值:** logging.handlers.RotatingFileHandler 的实例
+
+### 函数 `create_log_default_format`
+
+创建默认日志格式器。
+
+将一些日志的格式器统一用这个创建。
 
 ### 函数 `set_log`
 

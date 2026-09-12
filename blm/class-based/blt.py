@@ -288,8 +288,9 @@ class DanmuTools(ToolBase):
         return d
     def set_dm_config(self,color:str=None,mode:int=None)->BiliRESTReturn["blt_T.SetDMConfig"]:
         """设置当前直播间的弹幕配置
+
         color和mode必须选一个提供，并且不能同时存在
-        详见: [issue(comment)](https://github.com/SocialSisterYi/bilibili-API-collect/issues/1236#issuecomment-2849019923) [BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/danmaku.md#%E8%AE%BE%E7%BD%AE%E5%BC%B9%E5%B9%95%E6%A0%B7%E5%BC%8F)"""
+        """
         d=self.add_csrf({
             "room_id":self.roomid,
         })
@@ -428,34 +429,35 @@ class RoomTools(ToolBase):
 class LiveReplay(ToolBase):
     """直播回放"""
 
-    def get_replay_list(self,page:int=1,page_size:int=12)->dict:
+    def get_replay_list(self,page:int=1,page_size:int=12)->"blt_T.GetReplayList":
         """获取回放列表"""
         return self.get_rest_data("获取直播回放列表",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorGetReplayList?page={page}&page_size={page_size}")["data"]
-    def get_video_slice_list(self,page:int=1,page_size:int=12)->dict:
+    def get_video_slice_list(self,page:int=1,page_size:int=12)->"blt_T.GetVideoSliceList":
         """获取已发布片段列表"""
         return self.get_rest_data("获取已发布片段列表",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/AnchorGetVideoSliceList?page={page}&page_size={page_size}")["data"]
-    def get_draft_list(self,page:int=1,page_size:int=12)->dict:
+    def get_draft_list(self,page:int=1,page_size:int=12)->"blt_T.GetReplayDraftList":
         """获取草稿列表"""
         return self.get_rest_data("获取回放剪辑草稿列表",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetDraftList?page={page}&page_size={page_size}")["data"]
 
-    def delete_slice_draft(self,draft_id:int)->dict:
+    def delete_slice_draft(self,draft_id:int)->"blt_T.DeleteReplaySliceDraftRes":
         """删除某个草稿"""
         b=self.add_csrf({
             "draft_id":draft_id,
         })
         return self.get_rest_data("删除回放剪辑草稿","https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/DeleteSliceDraft",data=b)
 
-    def get_slice_stream(self,live_key:str,start_time:int,end_time:int)->dict:
+    def get_slice_stream(self,live_key:str,start_time:int,end_time:int)->"blt_T.GetSliceStream":
         """获取切片视频流"""
         return self.get_rest_data("获取切片视频流",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetSliceStream?live_key={live_key}&start_time={start_time}&end_time={end_time}")["data"]
-    def get_live_session_data(self,live_key:str,start_tm:str="2000-01-01+08:00:00",end_tm:str="2030-01-01+08:00:00")->dict:
+    def get_live_session_data(self,live_key:str,start_tm:str="2000-01-01+08:00:00",end_tm:str="2100-01-01+08:00:00")->"blt_T.GetLiveSessionData":
         """获取直播会话数据"""
         return self.get_rest_data("获取直播会话数据",f"https://api.live.bilibili.com/xlive/app-blink/v1/anchorVideo/GetLiveSessionData?live_key={live_key}&start_tm={start_tm}&end_tm={end_tm}")["data"]
 
-    def publish_video_slice(self,live_key:str,start_ts:int,end_ts:int,av_title:str,av_cover:str="https://i0.hdslb.com/bfs/live/59fc254c1f51a962dbf69ae85e4920f2f6fb8dcd.png",av_highlight:int=0,with_subtitle:int=0,with_danmaku:int=0,with_reserve:int=0,av_speed:str="")->dict[str,int]:
+    def publish_video_slice(self,live_key:str,start_ts:int,end_ts:int,av_title:str,av_cover:str="https://i0.hdslb.com/bfs/live/59fc254c1f51a962dbf69ae85e4920f2f6fb8dcd.png",av_highlight:int=0,with_subtitle:int=0,with_danmaku:int=0,with_reserve:int=0,av_speed:str="")->"blt_T.PublishVideoSliceRes":
         """发布回放片段
-        从av_title参数开始，建议使用关键字参数
-        参数解释见[BAC资料](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/live_replay.md#%E6%8A%95%E7%A8%BF%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE%E7%89%87%E6%AE%B5)"""
+
+        从 av_title 参数之后开始，建议使用关键字参数
+        """
         b=self.add_csrf({
             "live_key":live_key,
             "start_ts":start_ts,

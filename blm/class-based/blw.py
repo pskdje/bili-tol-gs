@@ -147,6 +147,8 @@ def error(v:dict[str,Any]=None,d:Any=None)->None:
             f.write("str(exception)= \""+str(sys.exc_info()[1])+"\"\n")
             traceback.print_exc(file=f)
             f.flush()
+            f.write("\n调用堆栈:\n")
+            traceback.print_stack(file=f)
             f.write("\n额外输入的变量信息:")
             if isinstance(v,dict):
                 for vn,vv in v.items():
@@ -1050,9 +1052,10 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             asyncio.run(self.ws_client(f"wss://{host}/sub",token),debug=True if DEBUG else None)
         except websockets.ConnectionClosedError as e:
             log.warning("连接关闭: "+str(e))
-            self.error(
-                heartbeat_pack_time=[self.send_heartbeat_time,self.reply_heartbeat_time],# 心跳包时间 [发送,回复]
-            )
+            if DEBUG:
+                self.error(
+                    heartbeat_pack_time=[self.send_heartbeat_time,self.reply_heartbeat_time],# 心跳包时间 [发送,回复]
+                )
             self.close_hpst("连接关闭")
             raise WSClientError("连接关闭: "+str(e))
         except BLWSign:
@@ -1063,7 +1066,8 @@ headers: {rqh}\ncookies: {cks}\nparams: {params}\ndata: {data}\njson: {json}\nti
             raise
         except TimeoutError:
             log.warning("超时")
-            self.error()
+            if DEBUG:
+                self.error()
             raise WSClientError("内部超时")
         except OSError:
             log.critical("出现OS异常!")
@@ -1135,6 +1139,9 @@ def create_log_handle(path:str)->logging.handlers.RotatingFileHandler:
     h=logging.handlers.RotatingFileHandler(LOGDIRPATH/path,maxBytes=2097152,backupCount=3,encoding=ENCODING)
     h.setLevel(logging.DEBUG)
     return h
+def create_log_default_format()->logging.Formatter:
+    """创建默认日志格式器"""
+    return logging.Formatter("{asctime} {levelname}: {message}",style="{")
 def set_log()->None:
     """保存运行日志"""
     h=create_log_handle("ms.log")
@@ -1144,21 +1151,21 @@ def set_wslog()->None:
     """保存ws客户端日志"""
     if wslog.hasHandlers():return
     h=create_log_handle("ws.log")
-    h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
+    h.setFormatter(create_log_default_format())
     wslog.addHandler(h)
 def set_reqlog()->None:
     """保存请求日志"""
     l=logging.getLogger("urllib3")
     l.setLevel(logging.DEBUG)
     h=create_log_handle("urllib3.log")
-    h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
+    h.setFormatter(create_log_default_format())
     l.addHandler(h)
 def set_asyncio_log()->None:
     """保存 asyncio 日志"""
     l=logging.getLogger("asyncio")
     l.setLevel(logging.DEBUG)
     h=create_log_handle("asyncio.log")
-    h.setFormatter(logging.Formatter("{asctime} {levelname}: {message}",style="{"))
+    h.setFormatter(create_log_default_format())
     l.addHandler(h)
 def save_log()->None:
     """配置保存日志"""
