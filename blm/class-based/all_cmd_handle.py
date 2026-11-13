@@ -52,6 +52,11 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         """礼物"""
         d=p["data"]
         s.pct("礼物",d["uname"],d["action"],d["giftName"],"×",d["num"])
+    def l_SEND_GIFT_V2(s,p):
+        """礼物V2,protobuf"""
+        d=s.dc_SEND_GIFT_V2(p)
+        for i in d["gift_list"]:
+            s.pct("礼物",d["uname"],i["action"],i["gift_name"],"×",i["num"])
     def l_COMBO_SEND(s,p):
         """组合礼物"""
         d=p["data"]
@@ -562,7 +567,7 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
         cut=d["cut_off_data"]
         h="直播"
         e=False
-        sp=lambda i:str(i["show_platform"])+" "
+        sp=lambda i:str(i["show_platform"])
         s.pct(h,"窗口标题:",cut["cut_off_title"])
         for i in cut["cut_off_message_list"]:
             if i["type"]==1:
@@ -571,17 +576,23 @@ class BiliLiveAllCmdHandle(ParseProtobufPack,blw.BiliLiveWS):
                 s.pct(z,"未知对话框内容类型",i["type"])
                 e=True
         for i in cut["cut_off_tip_list"]:
-            t=sp(i)
+            t=sp(i)+" "
             for i1 in i["message_list"]:
-                if i1["type"] in [1,2]:
+                tmt=i1["type"]
+                if tmt in [1,2]:
                     t+=i1["content"]
                 else:
+                    s.pct(z,"未知对话框提示类型",tmt)
                     e=True
             s.pct(h,"提示:",t)
         for i in cut["cut_off_button_list"]:
-            if i["button_action"]==1:
-                s.pct(h,"[按钮:关闭窗口]",i["button_text"])
+            ba=i["button_action"]
+            if ba==1:
+                s.pct(h,sp(i),"[按钮:关闭窗口]",i["button_text"])
+            elif ba==2:
+                s.pct(h,sp(i),"[按钮:前往链接]",i["button_text"],i["button_link_url"])
             else:
+                s.pct(z,"未知对话框按钮类型",ba)
                 e=True
         if e:
             raise SavePack("对话框有某个类型未知")

@@ -867,7 +867,7 @@ class RareCmdHandle(BLMColor):
         cut=d["cut_off_data"]
         h="直播"
         e=False
-        sp=lambda i:str(i["show_platform"])+" "
+        sp=lambda i:str(i["show_platform"])
         s.pct(h,f"窗口标题: {EB}{cut['cut_off_title']}{DF}")
         for i in cut["cut_off_message_list"]:
             if i["type"]==1:
@@ -876,17 +876,23 @@ class RareCmdHandle(BLMColor):
                 s.pct(z,"未知对话框内容类型"+TNUM,i["type"])
                 e=True
         for i in cut["cut_off_tip_list"]:
-            t=sp(i)
+            t=sp(i)+" "
             for i1 in i["message_list"]:
-                if i1["type"] in [1,2]:
+                tmt=i1["type"]
+                if tmt in [1,2]:
                     t+=i1["content"]
                 else:
+                    s.pct(z,"未知对话框提示类型"+TNUM,tmt)
                     e=True
             s.pct(h,f"提示: {B_10}{t}{BD}")
         for i in cut["cut_off_button_list"]:
-            if i["button_action"]==1:
-                s.pct(h,"[按钮:关闭窗口]",i["button_text"])
+            ba=i["button_action"]
+            if ba==1:
+                s.pct(h,sp(i),"[按钮:关闭窗口]",i["button_text"])
+            elif ba==2:
+                s.pct(h,sp(i),"[按钮:前往链接]",i["button_text"],i["button_link_url"])
             else:
+                s.pct(z,"未知对话框按钮类型"+TNUM,ba)
                 e=True
         if e:
             raise SavePack("对话框有某个类型未知")
@@ -1013,3 +1019,10 @@ class AllCmdHandle(ModuleAllCmdHandle,ParseProtobufPack):
         """在线排行V3,protobuf"""
         s.dc_ONLINE_RANK_V3(p)
         s.l_ONLINE_RANK_V2(p)
+    def l_SEND_GIFT_V2(s,p):
+        """礼物V2,protobuf"""
+        if s.args.no_SEND_GIFT:
+            return
+        d=s.dc_SEND_GIFT_V2(p)
+        for i in d["gift_list"]:
+            s.pct("礼物",f"{TUSR}{d['uname']}{CD} {i['action']} {i['gift_name']} {TNUM}× {i['num']}")
